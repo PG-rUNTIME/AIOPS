@@ -13,7 +13,7 @@ acme:                                  # tenant id
     webhook_url: "${CHAT_WEBHOOK_ACME}"
   email:
     host: "${SMTP_HOST}"
-    port: 587
-    starttls: true
+    port: "${SMTP_PORT}"
+    starttls: "${SMTP_STARTTLS}"
     sender: aiops@example.com
     recipients: [noc@example.com]

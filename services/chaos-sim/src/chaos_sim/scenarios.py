@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 
 from aiops_common.contracts.models import LogBatch, LogRecord, MetricBatch, MetricPoint
@@ -36,6 +36,12 @@ DEMO_HOSTS: tuple[Host, ...] = (
     Host(DEMO_TENANT, "CI-MOBILE-GW-01", "mobile-gateway"),
     Host(DEMO_TENANT, "CI-NET-RTR-HRE-01", "wan-router", kind="network"),
 )
+
+
+def hosts_for(tenant_id: str) -> tuple[Host, ...]:
+    """The simulated estate, belonging to the given tenant."""
+    return tuple(replace(h, tenant_id=tenant_id) for h in DEMO_HOSTS)
+
 
 SCENARIOS = (
     "disk_fill",

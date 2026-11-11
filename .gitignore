@@ -12,3 +12,6 @@ junit.xml
 evals/report.json
 rendered.yaml
 deploy/helm/*/charts/*.tgz
+
+# secrets / local config
+.env

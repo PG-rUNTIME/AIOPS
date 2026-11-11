@@ -21,13 +21,14 @@ from fastapi import FastAPI, HTTPException, Response
 
 from aiops_common.config import ServiceSettings
 from aiops_common.logging import setup_logging
-from chaos_sim.scenarios import DEMO_HOSTS, SCENARIOS, Scenario, sample
+from chaos_sim.scenarios import SCENARIOS, Scenario, hosts_for, sample
 
 log = logging.getLogger("chaos-sim")
 
 
 class Settings(ServiceSettings):
     service_name: str = "chaos-sim"
+    tenant_id: str  # the tenant the simulated estate reports as (AIOPS_TENANT_ID)
     tick_seconds: float = 15.0
     ingest_url: str | None = "http://ingest-gateway:8080"
     ingest_api_key: str | None = None
@@ -37,32 +38,39 @@ class Settings(ServiceSettings):
 class Sim:
     def __init__(self, s: Settings) -> None:
         self.s = s
+        self.hosts = hosts_for(s.tenant_id)
         self.rng = random.Random(42)
         self.active: Scenario | None = None
         self.last: dict[str, dict[str, float]] = {}
         self.http = httpx.AsyncClient(timeout=5)
 
+    def _check(self, r: httpx.Response, ci_id: str) -> None:
+        if r.status_code >= 300:  # never drop telemetry silently
+            log.warning("ingest rejected push", extra={"status": r.status_code, "ci_id": ci_id})
+
     async def tick(self) -> None:
         now = datetime.now(UTC)
-        for h in DEMO_HOSTS:
+        for h in self.hosts:
             mb, lb = sample(h, now, self.active, self.rng)
             self.last[h.ci_id] = {p.name: p.value for p in mb.points}
-            headers = {"X-AIOps-Tenant": h.tenant_id}
+            headers = {"X-AIOps-Tenant": h.tenant_id, "Content-Type": "application/json"}
             if self.s.ingest_api_key:
                 headers["Authorization"] = f"Bearer {self.s.ingest_api_key}"
             with contextlib.suppress(httpx.HTTPError):
                 if self.s.ingest_url:
-                    await self.http.post(
+                    r = await self.http.post(
                         f"{self.s.ingest_url}/v1/aiops/metrics",
                         content=mb.model_dump_json(),
                         headers=headers,
                     )
+                    self._check(r, h.ci_id)
                     if lb:
-                        await self.http.post(
+                        r = await self.http.post(
                             f"{self.s.ingest_url}/v1/aiops/logs",
                             content=lb.model_dump_json(),
                             headers=headers,
                         )
+                        self._check(r, h.ci_id)
                 if lb and self.s.loki_url:
                     await self.http.post(
                         f"{self.s.loki_url}/loki/api/v1/push",
@@ -88,7 +96,7 @@ class Sim:
 
     def exposition(self) -> str:
         lines = []
-        hosts = {h.ci_id: h for h in DEMO_HOSTS}
+        hosts = {h.ci_id: h for h in self.hosts}
         for ci, metrics in self.last.items():
             h = hosts[ci]
             for name, v in metrics.items():
@@ -122,7 +130,7 @@ def build(s: Settings) -> tuple[FastAPI, Sim]:
     ) -> dict[str, str]:
         if name not in SCENARIOS:
             raise HTTPException(404, f"scenario must be one of {SCENARIOS}")
-        host = next((h for h in DEMO_HOSTS if h.ci_id == ci_id), None)
+        host = next((h for h in sim.hosts if h.ci_id == ci_id), None)
         if host is None:
             raise HTTPException(404, "unknown ci_id")
         sim.active = Scenario(name, host, datetime.now(UTC), fail_after_s=fail_in_minutes * 60)

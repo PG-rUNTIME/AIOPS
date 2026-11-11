@@ -78,5 +78,5 @@ token: ## Print a dev JWT (ROLES=admin TENANTS='*')
 	@uv run python -c "import os;from control_plane.auth import dev_token;print(dev_token(os.environ['AIOPS_AUTH__DEV_SECRET'],'dev-user','$${ROLES:-admin}'.split(','),'$${TENANTS:-*}'.split(',')))"
 
 
-sim-stop:
-	curl -s -X DELETE http://localhost:8090/scenarios; echo
+sim-stop: ## Stop the injected failure scenario (chaos-sim, `dev` profile)
+	curl -s -X DELETE http://localhost:$${CHAOS_SIM_PORT:-8091}/scenarios; echo

@@ -60,7 +60,7 @@ class OpenAIToolLoopInvestigator:
     api_key: str | None
     client: httpx.AsyncClient
     max_steps: int = 6
-    max_output_tokens: int = 1500
+    max_output_tokens: int = 6000
     json_mode: bool = True
     extra_headers: dict[str, str] = field(default_factory=dict)
 
@@ -106,9 +106,19 @@ class OpenAIToolLoopInvestigator:
             msg = data["choices"][0]["message"]
             tcs = msg.get("tool_calls") or []
             if not tcs:
-                return InvestigationResult(msg.get("content") or "", calls, tokens, self.model)
+                content = msg.get("content") or ""
+                if content.strip():
+                    return InvestigationResult(content, calls, tokens, self.model)
+                # An empty reply (reasoning models can spend the whole output budget thinking)
+                # is not an answer: fall through and ask for the verdict explicitly.
+                log.warning(
+                    "model replied with no content; requesting the final verdict",
+                    extra={"finish_reason": data["choices"][0].get("finish_reason"), "step": step},
+                )
+                break
             messages.append({"role": "assistant", "content": msg.get("content"), "tool_calls": tcs})
-            for tc in tcs:
+            thought = (msg.get("content") or "").strip()[:400]
+            for n, tc in enumerate(tcs):
                 fn = tc["function"]["name"]
                 try:
                     args = json.loads(tc["function"].get("arguments") or "{}")
@@ -117,15 +127,26 @@ class OpenAIToolLoopInvestigator:
                 assert ctx.toolbox is not None
                 result = await ctx.toolbox.call(fn, args)
                 calls.append(
-                    ToolCall(fn, args.get("query") or args.get("runbook_id"), result, args)
+                    ToolCall(
+                        fn,
+                        args.get("query") or args.get("runbook_id"),
+                        result,
+                        args,
+                        thought if n == 0 else "",
+                    )
                 )
                 messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
         messages.append({"role": "user", "content": "Return the final JSON verdict now."})
         data = await self._chat(messages, tools=False)
         tokens += int(data.get("usage", {}).get("total_tokens", 0))
-        return InvestigationResult(
-            data["choices"][0]["message"].get("content") or "", calls, tokens, self.model
-        )
+        choice = data["choices"][0]
+        content = choice["message"].get("content") or ""
+        if not content.strip():
+            log.warning(
+                "model returned no final answer",
+                extra={"finish_reason": choice.get("finish_reason"), "model": self.model},
+            )
+        return InvestigationResult(content, calls, tokens, self.model)
 
 
 @dataclass

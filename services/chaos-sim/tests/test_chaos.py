@@ -29,7 +29,7 @@ def test_scenarios_progress_to_failure(name: str) -> None:
 
 
 async def test_api() -> None:
-    app, sim = build(Settings(ingest_url=None, loki_url=None))
+    app, sim = build(Settings(tenant_id="acme", ingest_url=None, loki_url=None))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://x") as c:
         assert (
             await c.post("/scenarios/disk_fill", params={"ci_id": "CI-CORE-DB-01"})
@@ -39,6 +39,7 @@ async def test_api() -> None:
         await sim.tick()
         text = (await c.get("/metrics")).text
         assert 'node_filesystem_avail_bytes{ci_id="CI-CORE-DB-01"' in text
+        assert 'tenant_id="acme"' in text  # reports as the configured tenant
         assert (await c.delete("/scenarios")).json()["status"] == "stopped"
         assert (await c.get("/healthz")).status_code == 200
         assert (await c.get("/readyz")).status_code == 200

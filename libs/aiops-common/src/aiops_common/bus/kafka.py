@@ -119,6 +119,9 @@ class KafkaBus:
             await consumer.commit(offsets)
 
     async def run(self) -> None:
+        if not self._consumers:  # producer-only service: stay alive until stop()
+            await self._stopping.wait()
+            return
         await asyncio.gather(*(self._consume(c, s) for c, s in self._consumers))
 
     async def stop(self) -> None:

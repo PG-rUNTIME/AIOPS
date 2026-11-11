@@ -152,3 +152,48 @@ def test_tuning_proposals() -> None:
         ]
     )
     assert [(p.failure_type, p.change) for p in props] == [("a", "tighten"), ("b", "loosen")]
+
+
+async def test_incident_detail_keeps_signals_trace_and_event_timeline() -> None:
+    from aiops_common.contracts.models import ToolTrace
+
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    t = [T0]
+    svc = FeedbackService(engine, None, {}, clock=lambda: t[0])
+    await svc.create_schema()
+    v = verdict("inc-detail-0000000001")
+    v.tool_trace = [
+        ToolTrace(tool="prometheus_query", query="up", result_preview="1", thought="check")
+    ]
+    await svc.on_event(make_event(v, source="t", event_id="e1"))
+    # an unchanged re-verdict adds no event; a changed ETA does
+    t[0] = T0 + timedelta(minutes=2)
+    await svc.on_event(make_event(v, source="t", event_id="e2"))
+    v2 = v.model_copy(update={"eta_minutes": 8})
+    t[0] = T0 + timedelta(minutes=4)
+    await svc.on_event(make_event(v2, source="t", event_id="e3"))
+    found = await svc.incident("t", "inc-detail-0000000001")
+    assert found is not None
+    d = found["detail"]
+    kinds = [e["kind"] for e in d["events"]]
+    assert kinds == ["first_signal", "verdict", "verdict"]  # e2 was a no-op
+    assert d["verdict"]["tool_trace"][0]["tool"] == "prometheus_query"
+    assert d["signals"][0]["metric"] == "m" and "candidate" not in d["verdict"]
+    assert found["view"]["eta_minutes"] == 8
+    # resolved verdict records the clearing event; other tenants cannot read it
+    r = v.model_copy(update={"status": VerdictStatus.RESOLVED})
+    await svc.on_event(make_event(r, source="t", event_id="e4"))
+    assert (await svc.incident("t", "inc-detail-0000000001"))["detail"]["events"][-1][
+        "kind"
+    ] == "risk_cleared"  # type: ignore[index]
+    assert await svc.incident("other", "inc-detail-0000000001") is None
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=create_app(svc)), base_url="http://x"
+    ) as c:
+        assert (
+            await c.get("/v1/incidents/inc-detail-0000000001", params={"tenant_id": "t"})
+        ).status_code == 200
+        assert (
+            await c.get("/v1/incidents/inc-detail-0000000001", params={"tenant_id": "x"})
+        ).status_code == 404
+    await engine.dispose()

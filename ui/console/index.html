@@ -4,36 +4,83 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AIOps Console · Cassava</title>
-  <meta name="description" content="Predicted incidents, AI root cause, fix approvals and prediction quality.">
+  <meta name="description" content="Predicted incidents, AI root cause, fix approvals, data connections and prediction quality.">
+  <meta name="color-scheme" content="light">
   <link rel="icon" type="image/png" href="brand/logo/favicon-64.png">
   <link rel="stylesheet" href="brand/tokens.css">
   <link rel="stylesheet" href="app.css">
   <script type="module" src="app.js"></script>
 </head>
-<body>
+<body data-view="auth">
   <a class="skip" href="#main">Skip to content</a>
-  <header class="bar">
-    <a class="brand" href="#/incidents" aria-label="Cassava AIOps console, incidents">
-      <img src="brand/logo/cassava-logo-white.png" alt="Cassava Technologies" width="116" height="32">
-      <span class="product">AIOps</span>
-    </a>
-    <nav class="tabs" aria-label="Sections" hidden>
-      <a href="#/incidents" data-route="incidents">Incidents</a>
-      <a href="#/approvals" data-route="approvals">Fix approvals <span class="count" id="approvals-count" hidden></span></a>
-      <a href="#/quality" data-route="quality">Prediction quality</a>
-      <a href="#/audit" data-route="audit">Audit log</a>
-    </nav>
-    <div class="who" hidden>
-      <label class="tenant">
-        <span class="visually-hidden">Tenant</span>
-        <select id="tenant"></select>
-      </label>
-      <span class="user" id="user"></span>
-      <button class="ghost" id="signout" type="button">Sign out</button>
-    </div>
-  </header>
+  <div class="shell">
+    <aside class="side" id="side">
+      <a class="brand" href="#/overview" aria-label="Cassava AIOps console, incidents">
+        <img src="brand/logo/cassava-logo-white.png" alt="Cassava Technologies" width="116" height="32">
+        <span class="product">AIOps</span>
+      </a>
+      <nav class="nav" aria-label="Sections">
+        <div class="nav-group">Monitor</div>
+        <a href="#/overview" data-route="overview">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="9" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.5"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.5"/><rect x="3" y="15" width="7.5" height="6" rx="1.5"/></svg>Overview</a>
+        <a href="#/incidents" data-route="incidents">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 10v5M12 17.5v.01"/></svg>Incidents</a>
+        <a href="#/approvals" data-route="approvals">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Fix approvals <span class="count" id="approvals-count" hidden></span></a>
+        <a href="#/quality" data-route="quality">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Prediction quality</a>
+        <div class="nav-group">Configure</div>
+        <a href="#/connections" data-route="connections">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7V3M15 7V3M6 7h12v4a6 6 0 0 1-12 0V7ZM12 17v4"/></svg>Connections</a>
+        <a href="#/users" data-route="users" id="users-tab" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.5c2 .7 3 2.6 3 5.5"/></svg>Users &amp; roles</a>
+        <div class="nav-group">Govern</div>
+        <a href="#/audit" data-route="audit">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6V3Z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg>Audit log</a>
+      </nav>
+      <div class="side-foot"><span class="env" id="env">Development</span></div>
+    </aside>
 
-  <main id="main" tabindex="-1"></main>
+    <div class="content">
+      <header class="top">
+        <button class="menu-btn" id="menu" type="button" aria-label="Open navigation" aria-controls="side">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <label class="tenant"><span>Tenant</span>
+          <select id="tenant" aria-label="Tenant"></select>
+        </label>
+        <span class="spacer"></span>
+        <div class="usermenu">
+          <button id="usermenu" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="usermenu-pop">
+            <span class="avatar" id="avatar" aria-hidden="true"></span>
+            <span class="who-name"><strong id="user"></strong><span id="role"></span></span>
+          </button>
+          <div class="pop" id="usermenu-pop" hidden>
+            <div class="pop-head"><strong id="pop-user"></strong><span id="pop-role"></span></div>
+            <button id="chpw" type="button" hidden>Change password</button>
+            <button id="signout" type="button">Sign out</button>
+          </div>
+        </div>
+      </header>
+
+      <main id="main" tabindex="-1"></main>
+
+      <footer class="foot" id="foot">
+        <div class="foot-main">
+          <span>© <span id="year"></span> Cassava Technologies</span>
+          <span class="sep" aria-hidden="true">·</span>
+          <span>AIOps console <span id="ver"></span></span>
+          <span class="sep" aria-hidden="true">·</span>
+          <span class="env" id="foot-env">Development</span>
+        </div>
+        <nav class="foot-links" aria-label="Platform">
+          <a href="../docs" target="_blank" rel="noopener">API reference</a>
+          <a href="../readyz" target="_blank" rel="noopener">Health check</a>
+          <span class="status" id="status" role="status"><i class="dot" aria-hidden="true"></i><span id="status-text">Checking…</span></span>
+        </nav>
+      </footer>
+    </div>
+  </div>
 
   <aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="drawer-title" role="dialog">
     <div class="drawer-body" id="drawer-body"></div>
@@ -51,6 +98,19 @@
     </form>
   </dialog>
 
+  <dialog id="form-dialog" aria-labelledby="form-title">
+    <form method="dialog" id="form-dialog-form" autocomplete="off">
+      <h2 id="form-title"></h2>
+      <div id="form-body" class="form-grid"></div>
+      <div class="error" id="form-error" role="alert" hidden></div>
+      <div class="row-end">
+        <button value="cancel" class="secondary" formnovalidate>Cancel</button>
+        <button value="ok" class="primary" id="form-ok"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="chart-tip" id="tip" role="tooltip" hidden></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

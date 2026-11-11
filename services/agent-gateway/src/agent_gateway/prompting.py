@@ -9,7 +9,7 @@ from agent_gateway.runbooks import PastIncident, Runbook
 from aiops_common.contracts.models import CandidateIncident
 from aiops_common.redaction import redact_str
 
-PROMPT_VERSION = "investigate.v1.0.0"
+PROMPT_VERSION = "investigate.v1.3.0"
 
 
 def system_prompt() -> str:
@@ -41,6 +41,7 @@ def candidate_brief(c: CandidateIncident) -> dict[str, object]:
                 "query": s.query,
                 "ts": s.ts.isoformat(),
                 "sample": s.labels.get("sample"),
+                "source": s.labels.get("source"),
             }
             for s in c.signals[:12]
         ],

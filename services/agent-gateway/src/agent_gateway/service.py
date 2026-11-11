@@ -12,21 +12,42 @@ import httpx
 from prometheus_client import Counter, Histogram
 
 from agent_gateway.budget import INFLIGHT, BudgetExceededError, TenantLimiter
+from agent_gateway.datasources import DataSources
 from agent_gateway.investigators import InvestigationContext, Investigator
 from agent_gateway.prompting import PROMPT_VERSION
 from agent_gateway.runbooks import Retriever, Runbook
 from agent_gateway.tools import ToolBackends, ToolBox
-from agent_gateway.validation import validate
+from agent_gateway.validation import ToolCall, validate
 from aiops_common.bus import EventBus
 from aiops_common.cloudevents import CloudEvent, make_event
-from aiops_common.contracts.models import CandidateIncident, Verdict, VerdictStatus
+from aiops_common.contracts.models import CandidateIncident, ToolTrace, Verdict, VerdictStatus
 from aiops_common.contracts.registry import Topics
 from aiops_common.ids import stable_id
 from aiops_common.logging import bind_context
+from aiops_common.redaction import redact_str
 from aiops_common.resilience import CircuitBreaker, CircuitOpenError
 
 log = logging.getLogger(__name__)
 SOURCE = "urn:aiops:agent-gateway"
+
+
+def _trace(calls: list[ToolCall]) -> list[ToolTrace]:
+    """What the agent ran, for the investigation view. Results are redacted and shortened."""
+    out: list[ToolTrace] = []
+    for c in calls[:40]:
+        r = c.result or ""
+        out.append(
+            ToolTrace(
+                tool=c.name[:64],
+                source=str(c.args.get("source"))[:100] if c.args.get("source") else None,
+                query=(c.query or None) and str(c.query)[:2000],
+                thought=redact_str(c.thought)[:400] or None,
+                result_preview=redact_str(r[:600]),
+                ok=not r.lstrip().startswith('{"error"'),
+            )
+        )
+    return out
+
 
 VERDICTS = Counter("aiops_verdicts_total", "Verdicts by status", ["status"])
 LATENCY = Histogram(
@@ -44,6 +65,7 @@ class AgentGateway:
     runbooks: dict[str, Runbook]
     limiter: TenantLimiter = field(default_factory=TenantLimiter)
     backends: ToolBackends = field(default_factory=ToolBackends)
+    sources: DataSources | None = None
     timeout_seconds: float = 90.0
     breaker: CircuitBreaker = field(
         default_factory=lambda: CircuitBreaker("llm", failure_threshold=3)
@@ -72,6 +94,7 @@ class AgentGateway:
         t0: float,
         model_id: str = "none",
         tokens: int = 0,
+        trace: list[ToolTrace] | None = None,
     ) -> Verdict:
         """Degraded verdict built ONLY from detector facts; no LLM claims are carried over."""
         rb = next(
@@ -104,6 +127,7 @@ class AgentGateway:
             downgrade_reasons=reasons,
             latency_ms=int((time.perf_counter() - t0) * 1000),
             tokens_used=tokens,
+            tool_trace=trace or [],
             candidate=c,
         )
 
@@ -128,7 +152,9 @@ class AgentGateway:
             toolbox=(
                 self.toolbox_factory(c.tenant_id)
                 if self.toolbox_factory
-                else ToolBox(self.backends, c.tenant_id, self.runbooks, self.http)
+                else ToolBox(
+                    self.backends, c.tenant_id, self.runbooks, self.http, sources=self.sources
+                )
             ),
             max_tokens_remaining=self.limiter.remaining(c.tenant_id),
         )
@@ -162,9 +188,25 @@ class AgentGateway:
 
         self.limiter.charge(c.tenant_id, result.tokens)
         out = validate(result.raw_output, result.tool_calls, c, set(self.runbooks))
+        if out.verdict is None:
+            log.warning(
+                "model output rejected",
+                extra={
+                    "reasons": out.reasons,
+                    "tool_calls": len(result.tool_calls),
+                    "tokens": result.tokens,
+                    "preview": redact_str(result.raw_output[:600]),
+                },
+            )
         if out.verdict is None or out.status is VerdictStatus.NEEDS_HUMAN:
             return self._fallback(
-                c, VerdictStatus.NEEDS_HUMAN, out.reasons, t0, result.model_id, result.tokens
+                c,
+                VerdictStatus.NEEDS_HUMAN,
+                out.reasons,
+                t0,
+                result.model_id,
+                result.tokens,
+                _trace(result.tool_calls),
             )
         v = out.verdict
         return Verdict(
@@ -178,5 +220,6 @@ class AgentGateway:
             downgrade_reasons=out.reasons,
             latency_ms=int((time.perf_counter() - t0) * 1000),
             tokens_used=result.tokens,
+            tool_trace=_trace(result.tool_calls),
             candidate=c,
         )

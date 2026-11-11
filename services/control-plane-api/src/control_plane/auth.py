@@ -3,6 +3,10 @@
 * ``oidc`` mode: JWT verified against the IdP's JWKS (Keycloak, Entra ID, Okta…),
   issuer and audience checked; roles from ``roles_claim`` (dotted path, e.g.
   ``realm_access.roles`` for Keycloak), tenants from ``tenants_claim``.
+* ``local`` mode: username/password accounts stored in the control-plane database; the login
+  endpoint issues short-lived HS256 session tokens signed with ``session_secret``. Role and
+  tenants are re-read from the database on every request, so disabling a user or changing a
+  role takes effect immediately.
 * ``dev`` mode: HS256 tokens signed with a local secret (``make token``). Refused
   when ``environment`` is ``prod``.
 Roles are hierarchical: viewer < operator < approver < admin.
@@ -25,13 +29,15 @@ Role = Literal["viewer", "operator", "approver", "admin"]
 
 
 class AuthSettings(BaseModel):
-    mode: Literal["oidc", "dev"] = "oidc"
+    mode: Literal["oidc", "local", "dev"] = "oidc"
     issuer: str | None = None
     audience: str = "aiops-control-plane"
     jwks_url: str | None = None
     roles_claim: str = "roles"
     tenants_claim: str = "tenants"
     dev_secret: SecretStr | None = None
+    session_secret: SecretStr | None = None
+    session_ttl_seconds: int = 8 * 3600
 
 
 @dataclass(frozen=True)
@@ -39,6 +45,7 @@ class Principal:
     sub: str
     roles: frozenset[str]
     tenants: frozenset[str]
+    issued_at: int = 0
 
     def level(self) -> int:
         return max((ROLES.index(r) for r in self.roles if r in ROLES), default=-1)
@@ -63,6 +70,10 @@ class Authenticator:
             raise RuntimeError("dev auth mode is not allowed in prod")
         if s.mode == "dev" and (s.dev_secret is None or len(s.dev_secret.get_secret_value()) < 32):
             raise RuntimeError("AIOPS_AUTH__DEV_SECRET must be set to at least 32 characters")
+        if s.mode == "local" and (
+            s.session_secret is None or len(s.session_secret.get_secret_value()) < 32
+        ):
+            raise RuntimeError("AIOPS_AUTH__SESSION_SECRET must be set to at least 32 characters")
         if s.mode == "oidc" and not (s.issuer and s.jwks_url):
             raise RuntimeError("oidc mode requires AIOPS_AUTH__ISSUER and AIOPS_AUTH__JWKS_URL")
         self.s = s
@@ -75,11 +86,12 @@ class Authenticator:
 
     def decode(self, token: str) -> Principal:
         try:
-            if self.s.mode == "dev":
-                assert self.s.dev_secret is not None
+            if self.s.mode in ("dev", "local"):
+                secret = self.s.dev_secret if self.s.mode == "dev" else self.s.session_secret
+                assert secret is not None
                 claims = jwt.decode(
                     token,
-                    self.s.dev_secret.get_secret_value(),
+                    secret.get_secret_value(),
                     options={"require": ["exp", "iat", "sub"]},
                     algorithms=["HS256"],
                     audience=self.s.audience,
@@ -100,7 +112,9 @@ class Authenticator:
         tenants = _claim(claims, self.s.tenants_claim) or []
         if isinstance(tenants, str):
             tenants = [tenants]
-        return Principal(str(claims["sub"]), frozenset(roles), frozenset(tenants))
+        return Principal(
+            str(claims["sub"]), frozenset(roles), frozenset(tenants), int(claims.get("iat", 0))
+        )
 
 
 _bearer = HTTPBearer(auto_error=False)
@@ -127,6 +141,12 @@ def require(
         return p
 
     return dep
+
+
+def session_token(
+    secret: str, username: str, role: str, tenants: list[str], ttl: int, audience: str
+) -> str:
+    return dev_token(secret, username, [role], tenants, audience=audience, ttl=ttl)
 
 
 def dev_token(

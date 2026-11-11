@@ -24,6 +24,7 @@ class ToolCall:
     query: str | None
     result: str
     args: dict[str, Any] = field(default_factory=dict)
+    thought: str = ""  # the model's visible note before this call, if any
 
 
 @dataclass

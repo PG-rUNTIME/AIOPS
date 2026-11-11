@@ -1,5 +1,5 @@
 # Dev stack. `make up` picks profiles; run a subset with e.g. COMPOSE_PROFILES=core.
-#   core          Kafka, Postgres+pgvector, MinIO, VictoriaMetrics, custom services, mock ServiceNow, Keep
+#   core          Kafka, Postgres+pgvector, VictoriaMetrics, custom services, mock ServiceNow, Keep
 #   observability OTel Collector, Alloy, Loki, Tempo, Grafana, vmalert, Alertmanager, Mailpit
 #   ai            Ollama (CPU LLM)            ai-gpu  vLLM (GPU)        holmes  HolmesGPT (optional)
 #   chaos         chaos-sim failure simulator
@@ -88,8 +88,10 @@ services:
     deploy: {resources: {limits: {cpus: "1", memory: 768M}}}
 
   minio:
-    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
-    profiles: [core]
+    # Optional S3 store (nothing in the dev stack depends on it). MinIO no longer publishes
+    # community images to Docker Hub: set MINIO_IMAGE to an image you build or mirror.
+    image: ${MINIO_IMAGE:-minio-unset}
+    profiles: [object-store]
     networks: [aiops]
     command: server /data --console-address :9001
     environment:
@@ -165,6 +167,7 @@ services:
       AIOPS_VM_URL: http://victoriametrics:8428
       AIOPS_LOKI_URL: http://loki:3100
       AIOPS_RUNBOOKS_DIR: /app/config/runbooks
+      AIOPS_CONTROL_PLANE_URL: http://control-plane-api:8080
     depends_on: *after-kafka
     deploy: {resources: {limits: {cpus: "0.5", memory: 384M}}}
 
@@ -175,6 +178,7 @@ services:
     environment:
       <<: *kafka-env
       AIOPS_DATABASE_URL: postgresql+asyncpg://aiops:${POSTGRES_PASSWORD}@postgres:5432/router
+      AIOPS_CREATE_SCHEMA: ${AIOPS_CREATE_SCHEMA:-true}
       AIOPS_CHANNELS_FILE: /app/config/router/channels.yaml
       AIOPS_RULES_FILE: /app/config/router/rules.yaml
     depends_on:
@@ -203,7 +207,11 @@ services:
     environment:
       AIOPS_DATABASE_URL: postgresql+asyncpg://aiops:${POSTGRES_PASSWORD}@postgres:5432/control_plane
       AIOPS_PLAYBOOKS_DIR: /app/config/remediation/playbooks
-      AIOPS_CREATE_SCHEMA: ${AIOPS_CREATE_SCHEMA:-false}
+      AIOPS_CREATE_SCHEMA: ${AIOPS_CREATE_SCHEMA:-true}
+      # sources with "feed failure detection" on are polled into the ingest-gateway as their tenant
+      AIOPS_POLLER_ENABLED: ${AIOPS_POLLER_ENABLED:-true}
+      AIOPS_INGEST_URL: http://ingest-gateway:8080
+      AIOPS_POLLER_INGEST_KEYS: '{"${TENANT_ID}":"${INGEST_API_KEY}"}'
     ports: ["127.0.0.1:8084:8080"]
     depends_on: {postgres: {condition: service_healthy}}
     deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
@@ -240,6 +248,7 @@ services:
     image: otel/opentelemetry-collector-contrib:0.116.1
     profiles: [observability]
     networks: [aiops]
+    user: "0:0"  # dev only: the named queue volume is root-owned; prod (Helm) runs non-root
     command: ["--config=/etc/otelcol/collector.yaml"]
     environment:
       TENANT_ID: ${TENANT_ID:?set in .env}
@@ -389,10 +398,11 @@ services:
     profiles: [dev]
     build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: chaos-sim}}
     environment:
+      AIOPS_TENANT_ID: ${TENANT_ID:?set in .env}
       AIOPS_INGEST_URL: http://ingest-gateway:8080
       AIOPS_INGEST_API_KEY: ${INGEST_API_KEY}
       AIOPS_LOKI_URL: http://loki:3100
-    ports: ["127.0.0.1:8090:8080"]
+    ports: ["127.0.0.1:${CHAOS_SIM_PORT:-8091}:8080"]
 
 networks:
   aiops:

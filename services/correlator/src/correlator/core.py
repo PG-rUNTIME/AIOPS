@@ -4,6 +4,8 @@ Rules (from the architecture document, §4.3):
 * group by ``tenant_id`` + ``ci_id`` inside a 5-minute window;
 * one episode per CI: later signals are absorbed (suppressed) for 30 minutes
   after the last signal, so a failing database is one candidate, not 40 alerts;
+* ...except a different failure type on a CI that already has an emitted episode: that is a
+  separate problem and gets its own episode (``<ci>|<failure_type>``), so it is not hidden;
 * attach change events seen for the CI in the 2 hours before the episode;
 * a candidate is emitted once the group has settled (``settle_seconds``) or is
   already high-confidence; a ``resolved`` candidate follows after a quiet period.
@@ -111,18 +113,29 @@ class Correlator:
 
     async def on_signal(self, sig: Signal) -> None:
         now = sig.ts
+        scope = ""
         ep = await self.store.get(sig.tenant_id, sig.ci_id)
         if ep is not None and self._expired(ep, now):
             await self.store.delete(sig.tenant_id, sig.ci_id)
             ep = None
+        if ep is not None and ep.emitted_at is not None and not self._covers(ep, sig):
+            # a different failure on a host that is already being reported
+            scope = f"{sig.ci_id}|{sig.failure_type}"
+            ep = await self.store.get(sig.tenant_id, scope)
+            if ep is not None and self._expired(ep, now):
+                await self.store.delete(sig.tenant_id, scope)
+                ep = None
         if ep is None:
             ep = Episode(
                 tenant_id=sig.tenant_id,
                 ci_id=sig.ci_id,
                 service=sig.service,
-                incident_key=stable_id(sig.tenant_id, sig.ci_id, sig.signal_id, prefix="inc-"),
+                incident_key=stable_id(
+                    sig.tenant_id, sig.ci_id, scope, sig.signal_id, prefix="inc-"
+                ),
                 first_seen=now,
                 last_seen=now,
+                scope=scope,
             )
         if any(s.signal_id == sig.signal_id for s in ep.signals):
             return  # replayed message: idempotent
@@ -146,6 +159,11 @@ class Correlator:
         ep.last_seen = max(ep.last_seen, now)
         await self.store.put(ep)
         await self._maybe_emit(ep, now)
+
+    @staticmethod
+    def _covers(ep: Episode, sig: Signal) -> bool:
+        """Is this signal part of the problem the episode already reports?"""
+        return sig.failure_type in {s.failure_type for s in ep.signals}
 
     def _expired(self, ep: Episode, now: datetime) -> bool:
         if ep.emitted_at is None:
@@ -175,7 +193,7 @@ class Correlator:
         for ep in await self.store.all():
             if ep.emitted_at is None:
                 if self._expired(ep, now):
-                    await self.store.delete(ep.tenant_id, ep.ci_id)
+                    await self.store.delete(ep.tenant_id, ep.key)
                 else:
                     await self._maybe_emit(ep, now)
                 continue
@@ -185,7 +203,7 @@ class Correlator:
                 await self.store.put(ep)
                 await self._publish(ep, resolved=True)
             elif self._expired(ep, now):
-                await self.store.delete(ep.tenant_id, ep.ci_id)
+                await self.store.delete(ep.tenant_id, ep.key)
 
     def _links(self, ep: Episode) -> list[str]:
         q = {

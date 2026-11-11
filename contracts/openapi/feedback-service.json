@@ -424,6 +424,56 @@
         "summary": "List Incidents"
       }
     },
+    "/v1/incidents/{incident_key}": {
+      "get": {
+        "operationId": "get_incident_v1_incidents__incident_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_key",
+            "required": true,
+            "schema": {
+              "title": "Incident Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Incident V1 Incidents  Incident Key  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Incident"
+      }
+    },
     "/v1/kpis": {
       "get": {
         "operationId": "get_kpis_v1_kpis_get",

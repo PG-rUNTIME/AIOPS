@@ -319,3 +319,96 @@ async def test_openai_and_holmes_investigators() -> None:
     assert "not found" in await tb.call("get_runbook", {"runbook_id": "X"})
     assert "RB-DISK-001" in await tb.call("get_runbook", {"runbook_id": "RB-DISK-001"})
     assert "result" in await tb.call("prometheus_range_query", {"query": "up", "minutes": 5})
+
+
+# ------------------------------------------------------------------ registered data sources
+async def test_tools_route_to_registered_sources_and_fall_back() -> None:
+    from agent_gateway.datasources import DataSources
+    from agent_gateway.tools import TOOL_SPECS
+
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        if req.method == "GET":
+            return httpx.Response(
+                200,
+                json=[
+                    {
+                        "id": "s1",
+                        "name": "Prod Prom",
+                        "kind": "prometheus",
+                        "category": "metrics",
+                        "ops": ["instant", "range"],
+                    },
+                    {
+                        "id": "s2",
+                        "name": "Logs",
+                        "kind": "loki",
+                        "category": "logs",
+                        "ops": ["logs"],
+                    },
+                ],
+            )
+        if req.url.path.endswith("/s1/query"):
+            return httpx.Response(200, json={"text": "METRIC RESULT"})
+        return httpx.Response(404, json={"detail": "data source not found"})
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    ds = DataSources("http://cp:8080", "tok", http)
+    tb = ToolBox(ToolBackends(), "acme", {}, http, sources=ds)
+    assert {"list_data_sources", "logs_query", "dashboard_search"} <= {
+        t["function"]["name"] for t in TOOL_SPECS
+    }
+    assert "Prod Prom | prometheus | metrics" in await tb.call("list_data_sources", {})
+    out = await tb.call("prometheus_query", {"query": "up", "source": "prod prom"})
+    assert out == "METRIC RESULT"
+    post = [r for r in seen if r.method == "POST"][-1]
+    assert post.headers["x-internal-token"] == "tok" and json.loads(post.content) == {
+        "op": "instant",
+        "query": "up",
+        "minutes": 1,
+    }
+    # a source that does not support the operation is rejected with the available names
+    bad = await tb.call("prometheus_query", {"query": "up", "source": "Logs"})
+    assert "unknown source" in bad and "Prod Prom" in bad
+    assert "source is required" in await tb.call(
+        "logs_query", {"query": "x"}
+    ) or "required" in await tb.call("logs_query", {"query": "x"})
+    # control-plane errors are surfaced to the model, not raised
+    assert "failed" in await DataSources("http://cp:8080", "t", http).query(
+        "acme", "zzz", "instant", "up"
+    )
+    # without a gateway configured, asking for a source is a clear error
+    none = ToolBox(ToolBackends(), "acme", {}, http)
+    assert "no registered data sources" in await none.call(
+        "prometheus_query", {"query": "up", "source": "x"}
+    )
+    assert "No registered data sources" in await none.call("list_data_sources", {})
+
+
+async def test_empty_model_reply_triggers_an_explicit_final_request() -> None:
+    """Reasoning models can return nothing after tool use; the verdict must be asked for again."""
+    seen: list[dict[str, object]] = []
+    final = '{"is_incident": false, "confidence": 0.5, "predicted_failure": "none", "root_cause": "x", "evidence": [], "recommended_actions": []}'
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        body = json.loads(req.content)
+        seen.append(body)
+        asked = body["messages"][-1]["content"] == "Return the final JSON verdict now."
+        content = final if asked else ""
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": content}, "finish_reason": "stop"}],
+                "usage": {"total_tokens": 10},
+            },
+        )
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    rbs = load_runbooks(RB_DIR)
+    ctx = InvestigationContext([], [], ToolBox(ToolBackends(), "t", rbs, http), 10_000)
+    res = await OpenAIToolLoopInvestigator("http://llm/v1", "m", "k", http).investigate(cand(), ctx)
+    assert json.loads(res.raw_output)["is_incident"] is False
+    assert len(seen) == 2 and "tools" not in seen[1]  # second call is the tool-less final request
+    assert seen[0]["max_tokens"] == 6000

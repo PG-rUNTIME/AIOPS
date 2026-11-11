@@ -397,6 +397,74 @@
       "title": "Signal",
       "type": "object"
     },
+    "ToolTrace": {
+      "additionalProperties": false,
+      "description": "One step of the investigation: a read-only tool the agent ran and what came back.",
+      "properties": {
+        "ok": {
+          "default": true,
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query"
+        },
+        "result_preview": {
+          "default": "",
+          "maxLength": 600,
+          "title": "Result Preview",
+          "type": "string"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Registered source used",
+          "title": "Source"
+        },
+        "thought": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Visible rationale",
+          "title": "Thought"
+        },
+        "tool": {
+          "maxLength": 64,
+          "title": "Tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool"
+      ],
+      "title": "ToolTrace",
+      "type": "object"
+    },
     "VerdictStatus": {
       "enum": [
         "verified",
@@ -521,6 +589,14 @@
       "default": 0,
       "title": "Tokens Used",
       "type": "integer"
+    },
+    "tool_trace": {
+      "items": {
+        "$ref": "#/$defs/ToolTrace"
+      },
+      "maxItems": 40,
+      "title": "Tool Trace",
+      "type": "array"
     }
   },
   "required": [

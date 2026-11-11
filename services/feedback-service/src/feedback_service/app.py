@@ -72,6 +72,16 @@ class Prediction(Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class IncidentDetail(Base):
+    """Everything the investigation page shows: signals, evidence, the agent's trace, events."""
+
+    __tablename__ = "feedback_incident_detail"
+    incident_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    detail: Mapped[str] = mapped_column(Text, default="{}")  # JSON
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class Label(Base):
     __tablename__ = "feedback_labels"
     incident_key: Mapped[str] = mapped_column(String(128), primary_key=True)
@@ -196,6 +206,7 @@ class FeedbackService:
             if v.status is VerdictStatus.RESOLVED:
                 if row is not None:
                     row.resolved_at = self.clock()
+                    await self._append_event(s, v, {"kind": "risk_cleared"})
                 return
             if row is None:
                 row = Prediction(
@@ -214,6 +225,92 @@ class FeedbackService:
             row.runbook_ref = v.runbook_ref
             row.recommended_actions = json.dumps(v.recommended_actions)
             row.updated_at = self.clock()
+            await self._store_detail(s, v)
+
+    async def _load_detail(self, s: Any, key: str) -> tuple[IncidentDetail | None, dict[str, Any]]:
+        row = await s.get(IncidentDetail, key)
+        return row, (json.loads(row.detail) if row else {})
+
+    async def _append_event(self, s: Any, v: Verdict, event: dict[str, Any]) -> None:
+        row, d = await self._load_detail(s, v.incident_key)
+        if row is None:
+            return
+        d.setdefault("events", []).append({"ts": self.clock().isoformat(), **event})
+        d["events"] = d["events"][-100:]
+        row.detail, row.updated_at = json.dumps(d), self.clock()
+
+    async def _store_detail(self, s: Any, v: Verdict) -> None:
+        now = self.clock()
+        row, d = await self._load_detail(s, v.incident_key)
+        events: list[dict[str, Any]] = d.get("events") or [
+            {"ts": v.candidate.first_seen.isoformat(), "kind": "first_signal"}
+        ]
+        verdict = v.model_dump(mode="json", exclude={"candidate"})
+        snap = (v.status.value, v.eta_minutes, round(v.confidence, 2))
+        last = d.get("verdict") or {}
+        if (
+            last.get("status"),
+            last.get("eta_minutes"),
+            round(last.get("confidence", -1), 2),
+        ) != snap:
+            events.append(
+                {
+                    "ts": now.isoformat(),
+                    "kind": "verdict",
+                    "status": v.status.value,
+                    "confidence": v.confidence,
+                    "eta_minutes": v.eta_minutes,
+                    "model": v.model_id,
+                }
+            )
+        d = {
+            "first_seen": v.candidate.first_seen.isoformat(),
+            "signals": [sg.model_dump(mode="json") for sg in v.candidate.signals[:12]],
+            "recent_changes": [c.model_dump(mode="json") for c in v.candidate.recent_changes],
+            "grafana_links": v.candidate.grafana_links,
+            "verdict": verdict,
+            "events": events[-100:],
+        }
+        if row is None:
+            s.add(
+                IncidentDetail(
+                    incident_key=v.incident_key,
+                    tenant_id=v.tenant_id,
+                    detail=json.dumps(d),
+                    updated_at=now,
+                )
+            )
+        else:
+            row.detail, row.updated_at = json.dumps(d), now
+
+    def _view(self, p: Prediction, lb: Label | None) -> IncidentView:
+        return IncidentView(
+            incident_key=p.incident_key,
+            tenant_id=p.tenant_id,
+            ci_id=p.ci_id,
+            service=p.service,
+            failure_type=p.failure_type,
+            status=p.status,
+            predicted_at=_utc(p.predicted_at) or p.predicted_at,
+            updated_at=_utc(p.updated_at),
+            resolved_at=_utc(p.resolved_at),
+            eta_minutes=p.eta_minutes,
+            confidence=p.confidence,
+            root_cause=p.root_cause,
+            runbook_ref=p.runbook_ref,
+            recommended_actions=json.loads(p.recommended_actions or "[]"),
+            outcome=lb.outcome if lb else None,
+            lead_time_minutes=lb.lead_time_minutes if lb else None,
+        )
+
+    async def incident(self, tenant: str, key: str) -> dict[str, Any] | None:
+        async with self.sessions() as s:
+            p = await s.get(Prediction, key)
+            if p is None or p.tenant_id != tenant:
+                return None
+            lb = await s.get(Label, key)
+            _, detail = await self._load_detail(s, key)
+        return {"view": self._view(p, lb).model_dump(mode="json"), "detail": detail or None}
 
     async def incidents(self, tenant: str, limit: int = 100) -> list[IncidentView]:
         async with self.sessions() as s:
@@ -236,29 +333,7 @@ class FeedbackService:
                 .scalars()
                 .all()
             }
-        return [
-            IncidentView(
-                incident_key=p.incident_key,
-                tenant_id=p.tenant_id,
-                ci_id=p.ci_id,
-                service=p.service,
-                failure_type=p.failure_type,
-                status=p.status,
-                predicted_at=_utc(p.predicted_at) or p.predicted_at,
-                updated_at=_utc(p.updated_at),
-                resolved_at=_utc(p.resolved_at),
-                eta_minutes=p.eta_minutes,
-                confidence=p.confidence,
-                root_cause=p.root_cause,
-                runbook_ref=p.runbook_ref,
-                recommended_actions=json.loads(p.recommended_actions or "[]"),
-                outcome=labels[p.incident_key].outcome if p.incident_key in labels else None,
-                lead_time_minutes=(
-                    labels[p.incident_key].lead_time_minutes if p.incident_key in labels else None
-                ),
-            )
-            for p in preds
-        ]
+        return [self._view(p, labels.get(p.incident_key)) for p in preds]
 
     async def record(self, fo: FeedbackOutcome) -> None:
         async with self.sessions.begin() as s:
@@ -383,6 +458,13 @@ def create_app(svc: FeedbackService, ready: Callable[[], bool] = lambda: True) -
     @app.get("/v1/incidents", response_model=list[IncidentView])
     async def list_incidents(tenant_id: str, limit: int = 100) -> list[IncidentView]:
         return await svc.incidents(tenant_id, limit)
+
+    @app.get("/v1/incidents/{incident_key}")
+    async def get_incident(incident_key: str, tenant_id: str) -> dict[str, Any]:
+        found = await svc.incident(tenant_id, incident_key)
+        if found is None:
+            raise HTTPException(404, "incident not found")
+        return found
 
     @app.get("/v1/predictions/{incident_key}")
     async def get_prediction(incident_key: str) -> dict[str, Any]:

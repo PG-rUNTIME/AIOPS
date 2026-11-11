@@ -177,6 +177,17 @@ class VerdictStatus(StrEnum):
     RESOLVED = "resolved"  # risk passed; router sends Clear events
 
 
+class ToolTrace(_Base):
+    """One step of the investigation: a read-only tool the agent ran and what came back."""
+
+    tool: str = Field(max_length=64)
+    source: str | None = Field(default=None, max_length=100, description="Registered source used")
+    query: str | None = Field(default=None, max_length=2000)
+    thought: str | None = Field(default=None, max_length=400, description="Visible rationale")
+    result_preview: str = Field(default="", max_length=600)
+    ok: bool = True
+
+
 class Verdict(LLMVerdict):
     """incidents.verdict payload: LLMVerdict + provenance + the candidate."""
 
@@ -189,6 +200,7 @@ class Verdict(LLMVerdict):
     downgrade_reasons: list[str] = Field(default_factory=list)
     latency_ms: int = 0
     tokens_used: int = 0
+    tool_trace: list[ToolTrace] = Field(default_factory=list, max_length=40)
     candidate: CandidateIncident
 
 

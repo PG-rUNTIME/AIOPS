@@ -156,3 +156,41 @@ async def test_stores(kind: str) -> None:
     assert len(await store.all()) == 1
     await store.delete("t", "c")
     assert await store.get("t", "c") is None
+
+
+async def test_a_different_failure_on_a_reported_host_gets_its_own_incident() -> None:
+    bus = InMemoryBus()
+    c = Correlator(bus)
+    for i in range(3):  # a disk problem is reported and then keeps signalling: suppressed
+        await c.on_signal(sig(i, ft="disk_full", score=0.95, dt=i * 30))
+    assert len(cands(bus)) == 1
+    # a memory problem on the SAME host is not part of it: it must surface separately
+    await c.on_signal(sig(10, ft="memory_exhaustion", score=0.95, dt=200))
+    out = cands(bus)
+    assert len(out) == 2 and out[0].incident_key != out[1].incident_key
+    assert out[1].predicted_failure.startswith("memory_exhaustion") and out[1].ci_id == "CI-1"
+    # further memory signals are absorbed by the memory episode, further disk ones by the disk one
+    await c.on_signal(sig(11, ft="memory_exhaustion", score=0.95, dt=230))
+    await c.on_signal(sig(12, ft="disk_full", score=0.95, dt=240))
+    assert len(cands(bus)) == 2
+    keys = {e.key for e in await c.store.all()}
+    assert keys == {"CI-1", "CI-1|memory_exhaustion"}
+    # each episode clears on its own when quiet
+    await c.tick(T0 + timedelta(seconds=240 + 901))
+    assert sum(1 for x in cands(bus) if x.resolved) == 2
+
+
+async def test_sql_store_keeps_episodes_for_the_same_host_apart() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    store = SqlEpisodeStore(engine)
+    await store.create_schema()
+    base = dict(tenant_id="t", ci_id="CI-1", service="db", first_seen=T0, last_seen=T0)
+    from correlator.store import Episode
+
+    await store.put(Episode(incident_key="inc-a" * 4, **base))
+    await store.put(Episode(incident_key="inc-b" * 4, scope="CI-1|memory_exhaustion", **base))
+    assert (await store.get("t", "CI-1")).incident_key == "inc-a" * 4  # type: ignore[union-attr]
+    assert (await store.get("t", "CI-1|memory_exhaustion")).incident_key == "inc-b" * 4  # type: ignore[union-attr]
+    await store.delete("t", "CI-1|memory_exhaustion")
+    assert await store.get("t", "CI-1|memory_exhaustion") is None and await store.get("t", "CI-1")
+    await engine.dispose()

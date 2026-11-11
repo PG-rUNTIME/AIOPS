@@ -18,6 +18,7 @@ import httpx
 from pydantic import BaseModel, SecretStr
 
 from agent_gateway.budget import TenantLimiter
+from agent_gateway.datasources import DataSources
 from agent_gateway.investigators import HolmesInvestigator, Investigator, OpenAIToolLoopInvestigator
 from agent_gateway.runbooks import (
     KeywordRetriever,
@@ -40,8 +41,11 @@ class LLMSettings(BaseModel):
     api_key: SecretStr | None = None
     model: str = "qwen3:8b"
     holmes_url: str = "http://holmesgpt:5050"
-    timeout_seconds: float = 90.0
+    timeout_seconds: float = 180.0  # reasoning models can take a while
     max_steps: int = 6
+    # Reasoning models (e.g. qwen, gpt-oss) spend output tokens thinking before they answer;
+    # too small a cap leaves no room for the final JSON.
+    max_output_tokens: int = 6000
     json_mode: bool = True
     embed_model: str | None = None  # enables pgvector RAG when set with rag_dsn
 
@@ -56,8 +60,12 @@ class Settings(ServiceSettings):
     vm_url: str = "http://victoriametrics:8428"
     vm_tenant_path: bool = False
     loki_url: str = "http://loki:3100"
+    # registered data sources are read through the control plane (credentials stay there)
+    control_plane_url: str = "http://control-plane-api:8080"
+    internal_token: SecretStr | None = None
     max_inflight_per_tenant: int = 2
-    tokens_per_tenant_per_day: int = 500_000
+    # reasoning models use 30-60k tokens per investigation
+    tokens_per_tenant_per_day: int = 2_000_000
 
 
 def build(s: Settings) -> AgentGateway:
@@ -72,6 +80,7 @@ def build(s: Settings) -> AgentGateway:
             key,
             http,
             max_steps=s.llm.max_steps,
+            max_output_tokens=s.llm.max_output_tokens,
             json_mode=s.llm.json_mode,
         )
     elif s.llm.provider == "holmes":
@@ -87,7 +96,12 @@ def build(s: Settings) -> AgentGateway:
         runbooks,
         limiter=TenantLimiter(s.max_inflight_per_tenant, s.tokens_per_tenant_per_day),
         backends=ToolBackends(s.vm_url, s.loki_url, s.vm_tenant_path),
-        timeout_seconds=min(90.0, s.llm.timeout_seconds),
+        sources=(
+            DataSources(s.control_plane_url, s.internal_token.get_secret_value(), http)
+            if s.internal_token
+            else None
+        ),
+        timeout_seconds=s.llm.timeout_seconds,
     )
     bus.subscribe(Subscription([Topics.CANDIDATES], s.consumer_group, gw.on_event, max_retries=1))
     return gw
