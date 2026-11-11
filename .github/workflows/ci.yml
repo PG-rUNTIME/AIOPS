@@ -1,0 +1,163 @@
+name: ci
+on:
+  push: {branches: [main]}
+  pull_request:
+permissions: {contents: read}
+concurrency: {group: "${{ github.workflow }}-${{ github.ref }}", cancel-in-progress: true}
+
+env:
+  UV_FROZEN: "1"
+  REGISTRY: ghcr.io/${{ github.repository_owner }}/aiops
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: {enable-cache: true}
+      - run: uv sync --all-packages
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+
+  typecheck:
+    needs: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: {enable-cache: true}
+      - run: uv sync --all-packages
+      - run: uv run mypy
+
+  unit:
+    needs: typecheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: {enable-cache: true}
+      - run: uv sync --all-packages
+      - run: uv run pytest --cov --cov-report=xml --junitxml=junit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: unit-results, path: "coverage.xml\njunit.xml"}
+
+  integration:
+    needs: unit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: {enable-cache: true}
+      - run: uv sync --all-packages
+      - run: uv run pytest tests/integration -m integration -o addopts="" -v
+
+  contract:
+    needs: unit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: {enable-cache: true}
+      - run: uv sync --all-packages
+      - run: uv run python scripts/gen_contracts.py --check
+      - run: uv run pytest tests/test_contracts.py -v
+      - run: npx --yes @asyncapi/cli@2.14.0 validate contracts/asyncapi.yaml
+
+  evals:
+    needs: unit
+    runs-on: ubuntu-24.04
+    env:
+      HAS_EVAL_KEY: ${{ secrets.EVAL_LLM_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: {enable-cache: true}
+      - run: uv sync --all-packages
+      - name: Replay evals (always)
+        run: uv run pytest evals -m evals -v
+      - name: Live evals (prompt/runbook/model changes, when a key is configured)
+        if: env.HAS_EVAL_KEY == 'true'
+        env:
+          AIOPS_EVAL_LIVE: "1"
+          AIOPS_LLM__BASE_URL: ${{ vars.EVAL_LLM_BASE_URL }}
+          AIOPS_LLM__MODEL: ${{ vars.EVAL_LLM_MODEL }}
+          AIOPS_LLM__API_KEY: ${{ secrets.EVAL_LLM_API_KEY }}
+        run: uv run pytest evals -m evals -v
+      - uses: actions/upload-artifact@v4
+        with: {name: eval-report, path: evals/report.json}
+
+  images:
+    needs: [integration, contract, evals]
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, packages: write, id-token: write}
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ingest-gateway, detector-workers, correlator, agent-gateway, router,
+                  feedback-service, control-plane-api, chaos-sim, mock-servicenow]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Pin base images by digest
+        run: ./scripts/pin-digests.sh && ./scripts/check-digests.sh
+      - uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main'
+        with: {registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+      - id: meta
+        run: echo "tag=${{ env.REGISTRY }}/${{ matrix.service }}:${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - name: Build (amd64 + arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            SERVICE=${{ matrix.service }}
+            REVISION=${{ github.sha }}
+            VERSION=${{ github.ref_name }}
+          tags: ${{ steps.meta.outputs.tag }}
+          push: ${{ github.ref == 'refs/heads/main' }}
+          load: ${{ github.ref != 'refs/heads/main' }}
+          provenance: mode=max      # SLSA build provenance
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Trivy (fail on fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          image-ref: ${{ steps.meta.outputs.tag }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: SBOM (Syft, SPDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.meta.outputs.tag }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.service }}.spdx.json
+      - uses: sigstore/cosign-installer@v3
+        if: github.ref == 'refs/heads/main'
+      - name: Sign (keyless) and attest SBOM
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cosign sign --yes "${{ steps.meta.outputs.tag }}"
+          cosign attest --yes --type spdxjson --predicate sbom-${{ matrix.service }}.spdx.json "${{ steps.meta.outputs.tag }}"
+
+  helm:
+    needs: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Lint and render
+        run: |
+          helm dependency build deploy/helm/aiops-platform
+          helm lint deploy/helm/aiops-service deploy/helm/aiops-platform
+          helm template aiops deploy/helm/aiops-platform -f deploy/helm/aiops-platform/values-prod.yaml > rendered.yaml
+      - name: kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          ./kubeconform -strict -summary -ignore-missing-schemas rendered.yaml
