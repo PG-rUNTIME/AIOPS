@@ -51,7 +51,7 @@ class Settings(ServiceSettings):
     consumer_group: str = "agent-gateway"
     llm: LLMSettings = LLMSettings()
     runbooks_dir: str = "/app/config/runbooks"
-    past_incidents_file: str | None = "/app/config/runbooks/past_incidents.yaml"
+    past_incidents_file: str | None = None  # optional YAML export of resolved incidents
     rag_dsn: str | None = None
     vm_url: str = "http://victoriametrics:8428"
     vm_tenant_path: bool = False

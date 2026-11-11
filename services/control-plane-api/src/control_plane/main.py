@@ -28,7 +28,7 @@ class Settings(ServiceSettings):
     auth: AuthSettings = AuthSettings()
     playbooks_dir: str = "/app/config/remediation/playbooks"
     executor: str = "dry_run"  # dry_run | ansible
-    create_schema: bool = True  # dev; prod runs `alembic upgrade head`
+    create_schema: bool = False  # prod runs `alembic upgrade head`; dev opts in
     feedback_url: str | None = "http://feedback-service:8080"
     console_dir: str = "/app/console"
     brand_dir: str = "/app/brand"

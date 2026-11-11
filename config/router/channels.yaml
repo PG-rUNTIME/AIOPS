@@ -1,23 +1,5 @@
-# Per-tenant delivery channels. Secrets are ${ENV} references injected at runtime
-# (Vault / External Secrets in Kubernetes, .env in dev) — never literal values here.
-demo-bank:
-  servicenow:
-    instance_url: "${SN_DEMO_URL}"
-    mode: em_with_table_fallback
-    username: "${SN_DEMO_USER}"
-    password: "${SN_DEMO_PASSWORD}"
-    event_source: AIOps
-    resolve_state: "6"
-    close_code: "Solved (Permanently)"
-  chat:
-    kind: slack            # or: teams
-    webhook_url: "${CHAT_WEBHOOK_DEMO}"
-  email:
-    host: "${SMTP_HOST}"
-    port: 1025
-    starttls: false
-    sender: aiops@demo-bank.local
-    recipients: [noc@demo-bank.local]
-  keep:
-    url: http://keep-api:8080
-    api_key: "${KEEP_API_KEY}"
+# Per-tenant delivery channels, keyed by tenant id. Secrets are ${ENV} references injected at
+# runtime (Vault / External Secrets in Kubernetes) — never literal values here.
+# Empty by default: tenants with no channels fall back to log-only delivery.
+# See channels.example.yaml for the full shape.
+{}

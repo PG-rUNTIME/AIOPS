@@ -105,9 +105,9 @@ router:
   externalSecret:
     enabled: true
     data:
-    - secretKey: SN_DEMO_PASSWORD
+    - secretKey: SN_ACME_PASSWORD
       remoteRef:
-        key: aiops/servicenow/demo-bank
+        key: aiops/servicenow/acme
         property: password
     - secretKey: AIOPS_DATABASE_URL
       remoteRef:

@@ -1,0 +1,19 @@
+# Copy entries into channels.yaml (or mount your own file via AIOPS_CHANNELS_FILE).
+acme:                                  # tenant id
+  servicenow:
+    instance_url: "${SN_ACME_URL}"
+    mode: em_with_table_fallback
+    username: "${SN_ACME_USER}"
+    password: "${SN_ACME_PASSWORD}"
+    event_source: AIOps
+    resolve_state: "6"
+    close_code: "Solved (Permanently)"
+  chat:
+    kind: slack                        # or: teams
+    webhook_url: "${CHAT_WEBHOOK_ACME}"
+  email:
+    host: "${SMTP_HOST}"
+    port: 587
+    starttls: true
+    sender: aiops@example.com
+    recipients: [noc@example.com]

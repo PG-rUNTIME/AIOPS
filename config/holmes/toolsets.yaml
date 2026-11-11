@@ -9,7 +9,7 @@ toolsets:
     enabled: true
     config:
       url: http://loki:3100
-      headers: {X-Scope-OrgID: demo-bank}
+      headers: {X-Scope-OrgID: "${TENANT_ID}"}
   kubernetes/core:
     enabled: false   # enable in-cluster with a read-only ServiceAccount
 mcp_servers:

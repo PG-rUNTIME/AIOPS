@@ -61,6 +61,10 @@ class Authenticator:
     def __init__(self, s: AuthSettings, environment: str) -> None:
         if s.mode == "dev" and environment == "prod":
             raise RuntimeError("dev auth mode is not allowed in prod")
+        if s.mode == "dev" and (s.dev_secret is None or len(s.dev_secret.get_secret_value()) < 32):
+            raise RuntimeError("AIOPS_AUTH__DEV_SECRET must be set to at least 32 characters")
+        if s.mode == "oidc" and not (s.issuer and s.jwks_url):
+            raise RuntimeError("oidc mode requires AIOPS_AUTH__ISSUER and AIOPS_AUTH__JWKS_URL")
         self.s = s
 
     @cached_property
@@ -72,10 +76,11 @@ class Authenticator:
     def decode(self, token: str) -> Principal:
         try:
             if self.s.mode == "dev":
-                assert self.s.dev_secret is not None, "AIOPS_AUTH__DEV_SECRET required in dev mode"
+                assert self.s.dev_secret is not None
                 claims = jwt.decode(
                     token,
                     self.s.dev_secret.get_secret_value(),
+                    options={"require": ["exp", "iat", "sub"]},
                     algorithms=["HS256"],
                     audience=self.s.audience,
                 )

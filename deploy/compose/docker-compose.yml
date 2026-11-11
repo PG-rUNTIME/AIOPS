@@ -180,7 +180,6 @@ services:
     depends_on:
       <<: *after-kafka
       postgres: {condition: service_healthy}
-      mock-servicenow: {condition: service_healthy}
     deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
 
   feedback-service:
@@ -204,25 +203,15 @@ services:
     environment:
       AIOPS_DATABASE_URL: postgresql+asyncpg://aiops:${POSTGRES_PASSWORD}@postgres:5432/control_plane
       AIOPS_PLAYBOOKS_DIR: /app/config/remediation/playbooks
+      AIOPS_CREATE_SCHEMA: ${AIOPS_CREATE_SCHEMA:-false}
     ports: ["127.0.0.1:8084:8080"]
     depends_on: {postgres: {condition: service_healthy}}
     deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
 
-  control-plane-seed:
-    # Seeds the demo tenant, CIs, thresholds and remediation policy through the API.
-    <<: [*svc, *small]
-    profiles: [core]
-    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: control-plane-api}}
-    restart: "no"
-    healthcheck: {disable: true}
-    entrypoint: ["/opt/venv/bin/python", "-m", "control_plane.seed"]
-    environment:
-      AIOPS_CONTROL_PLANE_URL: http://control-plane-api:8080
-    depends_on: {control-plane-api: {condition: service_healthy}}
 
   mock-servicenow:
     <<: [*svc, *small]
-    profiles: [core]
+    profiles: [dev]
     build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: mock-servicenow}}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=2).status==200 else 1)"]
@@ -253,8 +242,8 @@ services:
     networks: [aiops]
     command: ["--config=/etc/otelcol/collector.yaml"]
     environment:
-      TENANT_ID: demo-bank
-      ENVIRONMENT: dev
+      TENANT_ID: ${TENANT_ID:?set in .env}
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
       INGEST_API_KEY: ${INGEST_API_KEY}
     volumes:
       - ../../config/otel-collector/collector.yaml:/etc/otelcol/collector.yaml:ro
@@ -268,8 +257,8 @@ services:
     networks: [aiops]
     command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
     environment:
-      TENANT_ID: demo-bank
-      CI_ID: CI-DEV-LAPTOP
+      TENANT_ID: ${TENANT_ID:?set in .env}
+      CI_ID: ${HOST_CI_ID:?set in .env}
       INGEST_API_KEY: ${INGEST_API_KEY}
     volumes: [../../config/alloy/config.alloy:/etc/alloy/config.alloy:ro]
     deploy: {resources: {limits: {cpus: "0.5", memory: 384M}}}
@@ -397,7 +386,7 @@ services:
   # ------------------------------------------------------------------ chaos
   chaos-sim:
     <<: [*svc, *small]
-    profiles: [chaos]
+    profiles: [dev]
     build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: chaos-sim}}
     environment:
       AIOPS_INGEST_URL: http://ingest-gateway:8080

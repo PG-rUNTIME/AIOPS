@@ -111,6 +111,8 @@ def asyncapi() -> dict[str, Any]:
 
 
 def openapis() -> dict[str, dict[str, Any]]:
+    from pydantic import SecretStr
+
     from control_plane.app import create_app as cp
     from control_plane.auth import Authenticator, AuthSettings
     from control_plane.remediation import DryRunExecutor
@@ -122,7 +124,10 @@ def openapis() -> dict[str, dict[str, Any]]:
     eng = create_async_engine("sqlite+aiosqlite:///:memory:")
     return {
         "control-plane-api": cp(
-            eng, Authenticator(AuthSettings(mode="dev"), "dev"), DryRunExecutor(), set()
+            eng,
+            Authenticator(AuthSettings(mode="dev", dev_secret=SecretStr("x" * 32)), "dev"),
+            DryRunExecutor(),
+            set(),
         ).openapi(),
         "feedback-service": fb(FeedbackService(eng, None, {})).openapi(),
         "ingest-gateway": ig(Ingest(InMemoryBus(), {})).openapi(),

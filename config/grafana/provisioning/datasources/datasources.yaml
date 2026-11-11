@@ -13,7 +13,7 @@ datasources:
     jsonData:
       httpHeaderName1: X-Scope-OrgID
     secureJsonData:
-      httpHeaderValue1: demo-bank
+      httpHeaderValue1: ${GRAFANA_DEFAULT_TENANT}
   - name: Tempo
     uid: tempo
     type: tempo

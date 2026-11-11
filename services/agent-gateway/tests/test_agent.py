@@ -33,6 +33,7 @@ from aiops_common.contracts.registry import Topics
 from aiops_common.resilience import CircuitBreaker
 
 RB_DIR = Path(__file__).resolve().parents[3] / "config" / "runbooks"
+FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "fixtures"
 T0 = datetime(2026, 11, 11, 8, 0, tzinfo=UTC)
 Q = '1 - node_filesystem_avail_bytes{ci_id="CI-1"} / node_filesystem_size_bytes{ci_id="CI-1"}'
 
@@ -143,7 +144,7 @@ def test_prompt_is_redacted_and_versioned() -> None:
 async def test_runbooks_and_retriever() -> None:
     rbs = load_runbooks(RB_DIR)
     assert len(rbs) >= 5 and "RB-DISK-001" in rbs
-    r = KeywordRetriever(rbs, load_past_incidents(RB_DIR / "past_incidents.yaml"))
+    r = KeywordRetriever(rbs, load_past_incidents(FIXTURES / "past_incidents.yaml"))
     assert (await r.runbooks_for("connection_pool_exhaustion", "timeout acquiring connection"))[
         0
     ].id == "RB-DBPOOL-001"

@@ -30,11 +30,6 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-5B6478?style=flat-square&labelColor=001C57"></a>
 </p>
 
-<p align="center">
-  <img src="docs/media/demo.gif" alt="A real disk-fill run: the anomaly detector fires at 0:45, a verified ServiceNow ticket opens at 2:45, the trend detector predicts full in 14.7 minutes at 9:45 and updates the same ticket, and the disk fills at 20:00, 17 minutes after the ticket." width="880">
-  <br><sub>A real disk-fill run through the pipeline (<code>make demo-media</code> regenerates it) · <a href="docs/media/demo.mp4">MP4</a></sub>
-</p>
-
 Collects metrics, logs and traces; **predicts failures 5–15 minutes ahead**; investigates
 candidates with an LLM agent; opens a ServiceNow ticket (or Teams/Slack/e-mail) with root cause,
 evidence and the recommended fix. Self-hostable, multi-tenant, data-residency-safe.
@@ -44,9 +39,8 @@ evidence and the recommended fix. Self-hostable, multi-tenant, data-residency-sa
 ## Quick start
 
 ```bash
-cp .env.example .env        # set an LLM: hosted key, vLLM (GPU) or the default Ollama
-make up                     # core + observability + chaos (+ ai) profiles, waits for healthy
-make demo-disk-fill         # watch Grafana (localhost:3000) and mock ServiceNow (localhost:8085/mock/state)
+cp .env.example .env        # set tenant, credentials and an LLM: hosted key, vLLM (GPU) or the default Ollama
+make up                     # core + observability (+ ai) profiles, waits for healthy
 make test                   # lint, mypy --strict, unit + e2e (coverage ≥ 80 %), evals, contracts
 ```
 
@@ -61,14 +55,8 @@ marked with the Cassava triangle. Operators label outcomes and request fixes; a 
 approves; every action lands in the audit log. Sign-in uses OIDC (authorization code + PKCE) when
 `AIOPS_CONSOLE_OIDC_ISSUER`/`AIOPS_CONSOLE_OIDC_CLIENT_ID` are set, or a pasted token in dev (`make token`).
 
-<p align="center"><img src="docs/media/console-incidents.png" alt="Incidents view: four open predictions sorted by time left, with runway bars and AI-verified, unverified and needs-review states" width="880"></p>
-
-| Incident detail | Fix approvals | Prediction quality |
-|---|---|---|
-| <img src="docs/media/console-incident-detail.png" alt="Incident drawer with root cause, recommended fix, runbook, outcome labelling and fix request" width="290"> | <img src="docs/media/console-approvals.png" alt="Fix approvals with four-eyes approve, reject and run actions" width="290"> | <img src="docs/media/console-quality.png" alt="Precision, recall and median warning time per failure type against targets" width="290"> |
-
 Brand: Cassava theme colours and fonts (Montserrat, Arial) from [`brand/`](brand/README.md), shared by the
-console, Grafana dashboards and the demo media.
+console and Grafana dashboards.
 
 ## Layout
 
@@ -81,7 +69,7 @@ console, Grafana dashboards and the demo media.
 | `deploy/compose` · `deploy/docker` · `deploy/helm` · `deploy/argocd` | dev stack · image · charts · GitOps |
 | `evals/` | recorded incidents + harness (replay in CI, live with your LLM) |
 | `tests/e2e` · `tests/integration` | in-process chaos → ticket pipeline · Testcontainers Kafka/Postgres |
-| `docs/` | `architecture.md`, `adr/`, `runbooks/`, `demos/`, `media/` |
+| `docs/` | `architecture.md`, `adr/`, `runbooks/` |
 | `ui/console` · `brand/` | operator console (static, served by control-plane-api) · Cassava brand kit |
 
 ## Milestone status

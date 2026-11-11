@@ -153,6 +153,8 @@ def test_dev_mode_refused_in_prod_and_playbooks(tmp_path) -> None:  # type: igno
 
 
 def test_role_claim_paths() -> None:
+    import time
+
     import jwt
 
     a = Authenticator(
@@ -162,6 +164,8 @@ def test_role_claim_paths() -> None:
         {
             "sub": "k",
             "aud": "aiops-control-plane",
+            "iat": int(time.time()),
+            "exp": int(time.time()) + 60,
             "realm_access": {"roles": ["approver"]},
             "tenants": "bank",
         },

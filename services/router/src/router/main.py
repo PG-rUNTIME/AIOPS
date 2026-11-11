@@ -25,7 +25,7 @@ class Settings(ServiceSettings):
     rules_file: str | None = "/app/config/router/rules.yaml"
     mirror_to_keep: bool = False
     dispatch_interval_seconds: float = 1.0
-    create_schema: bool = True
+    create_schema: bool = False  # prod runs `alembic upgrade head`; dev opts in
 
 
 def main() -> None:

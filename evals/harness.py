@@ -115,7 +115,9 @@ async def run_case(case: dict[str, Any], live: bool = False) -> EvalResult:
     gw = AgentGateway(
         InMemoryBus(),
         inv,
-        KeywordRetriever(runbooks, load_past_incidents(RUNBOOKS / "past_incidents.yaml")),
+        KeywordRetriever(
+            runbooks, load_past_incidents(ROOT / "tests" / "fixtures" / "past_incidents.yaml")
+        ),
         runbooks,
         toolbox_factory=lambda _t: RecordedToolBox(tools, runbooks),
         timeout_seconds=120,

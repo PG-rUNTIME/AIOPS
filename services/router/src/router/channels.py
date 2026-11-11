@@ -3,10 +3,10 @@
 Secrets are never written in the file; they are injected as environment
 variables (from Vault / External Secrets in Kubernetes, ``.env`` in dev).
 
-    demo-bank:
-      servicenow: {instance_url: "http://mock-servicenow:8080", mode: em_with_table_fallback,
-                   username: aiops, password: "${SN_DEMO_PASSWORD}"}
-      chat: {kind: slack, webhook_url: "${SLACK_WEBHOOK_DEMO}"}
+    acme:
+      servicenow: {instance_url: "https://example.service-now.com", mode: em_with_table_fallback,
+                   username: aiops, password: "${SN_ACME_PASSWORD}"}
+      chat: {kind: slack, webhook_url: "${CHAT_WEBHOOK_ACME}"}
 """
 
 from __future__ import annotations

@@ -6,7 +6,7 @@ VERSION ?= $(shell git describe --tags --always 2>/dev/null || echo 0.1.0)
 REGISTRY ?= ghcr.io/your-org/aiops
 
 .PHONY: help up down logs ps profiles test test-unit test-e2e test-integration evals lint fmt typecheck \
-        contracts contracts-check dashboards build token demo-disk-fill demo-memory-leak demo-media sim-stop clean
+        contracts contracts-check dashboards build token sim-stop clean
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-18s %s\n",$$1,$$2}'
@@ -77,15 +77,6 @@ build: ## Build all images for the local arch
 token: ## Print a dev JWT (ROLES=admin TENANTS='*')
 	@uv run python -c "import os;from control_plane.auth import dev_token;print(dev_token(os.environ['AIOPS_AUTH__DEV_SECRET'],'dev-user','$${ROLES:-admin}'.split(','),'$${TENANTS:-*}'.split(',')))"
 
-demo-disk-fill: ## Inject a disk-fill on CI-CORE-DB-01 (fails in 20 min)
-	curl -s -X POST 'http://localhost:8090/scenarios/disk_fill?ci_id=CI-CORE-DB-01&fail_in_minutes=20'; echo
-
-demo-memory-leak:
-	curl -s -X POST 'http://localhost:8090/scenarios/memory_leak?ci_id=CI-MOBILE-GW-01&fail_in_minutes=20'; echo
-
-demo-media: ## Regenerate docs/media/demo.{gif,mp4} from a real in-process pipeline run
-	PYTHONPATH=. uv run python scripts/media/capture_timeline.py
-	python3 scripts/media/render_demo.py   # needs: pip install playwright && playwright install chromium; ffmpeg
 
 sim-stop:
 	curl -s -X DELETE http://localhost:8090/scenarios; echo

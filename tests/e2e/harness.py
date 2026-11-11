@@ -177,7 +177,9 @@ class Pipeline:
         self.agent = AgentGateway(
             self.bus,
             OpenAIToolLoopInvestigator("http://llm/v1", "fake-model", None, llm_http),
-            KeywordRetriever(runbooks, load_past_incidents(RUNBOOKS / "past_incidents.yaml")),
+            KeywordRetriever(
+                runbooks, load_past_incidents(ROOT / "tests" / "fixtures" / "past_incidents.yaml")
+            ),
             runbooks,
             backends=ToolBackends("http://vm", "http://loki"),
             http=llm_http,

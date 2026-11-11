@@ -96,7 +96,7 @@ jobs:
       fail-fast: false
       matrix:
         service: [ingest-gateway, detector-workers, correlator, agent-gateway, router,
-                  feedback-service, control-plane-api, chaos-sim, mock-servicenow]
+                  feedback-service, control-plane-api,]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
