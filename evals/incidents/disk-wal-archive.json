@@ -1,0 +1,60 @@
+{
+  "id": "disk-wal-archive",
+  "description": "disk_full on CI-CORE-DB-01",
+  "candidate": {
+    "incident_key": "inc-eval-disk-wal-archive-0000",
+    "tenant_id": "demo-bank",
+    "ci_id": "CI-CORE-DB-01",
+    "service": "core-banking-db",
+    "signals": [
+      {
+        "signal_id": "sig-disk_full-trend",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-CORE-DB-01",
+        "service": "core-banking-db",
+        "detector": "trend",
+        "failure_type": "disk_full",
+        "metric": "1 - avail/size",
+        "template": null,
+        "value": 0.9,
+        "threshold": 0.98,
+        "eta_minutes": 11,
+        "score": 0.85,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "1 - node_filesystem_avail_bytes{ci_id=\"CI-CORE-DB-01\",mountpoint=\"/\"} / node_filesystem_size_bytes{ci_id=\"CI-CORE-DB-01\",mountpoint=\"/\"}",
+        "labels": {}
+      }
+    ],
+    "predicted_failure": "disk_full",
+    "eta_minutes": 11,
+    "confidence": 0.85,
+    "recent_changes": [],
+    "grafana_links": [],
+    "first_seen": "2026-11-02T09:00:00Z",
+    "last_seen": "2026-11-02T09:00:00Z"
+  },
+  "tool_results": [
+    {
+      "name": "prometheus_query",
+      "query": "1 - node_filesystem_avail_bytes{ci_id=\"CI-CORE-DB-01\",mountpoint=\"/\"} / node_filesystem_size_bytes{ci_id=\"CI-CORE-DB-01\",mountpoint=\"/\"}",
+      "result": "{\"result\":[{\"metric\":{\"ci_id\":\"CI-CORE-DB-01\"},\"value\":[1,\"0.962\"]}]}"
+    },
+    {
+      "name": "loki_query",
+      "query": "{ci_id=\"CI-CORE-DB-01\"} |= \"archive\"",
+      "result": "LOG archive command failed with exit code 1\nLOG archiving write-ahead log file \"0000000100000A2B\" failed too many times"
+    }
+  ],
+  "recorded": {
+    "model_id": "recorded:claude-or-qwen",
+    "raw_output": "{\n \"is_incident\": true,\n \"confidence\": 0.82,\n \"predicted_failure\": \"disk_full\",\n \"eta_minutes\": 11,\n \"root_cause\": \"PostgreSQL WAL archiving is failing (archive command exit code 1), so WAL segments accumulate on the data volume.\",\n \"evidence\": [\n  {\n   \"query\": \"{ci_id=\\\"CI-CORE-DB-01\\\"} |= \\\"archive\\\"\",\n   \"excerpt\": \"archive command failed with exit code 1\"\n  }\n ],\n \"recommended_actions\": [\n  \"Restore archive_command destination credentials\",\n  \"Verify pg_stat_archiver\"\n ],\n \"runbook_ref\": \"RB-DISK-001\"\n}"
+  },
+  "expected": {
+    "status": "verified",
+    "root_cause_keywords": [
+      "archive",
+      "wal"
+    ],
+    "runbook_ref": "RB-DISK-001"
+  }
+}

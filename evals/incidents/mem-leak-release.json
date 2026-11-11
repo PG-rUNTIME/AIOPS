@@ -1,0 +1,66 @@
+{
+  "id": "mem-leak-release",
+  "description": "memory_exhaustion on CI-MOBILE-GW-01",
+  "candidate": {
+    "incident_key": "inc-eval-mem-leak-release-0000",
+    "tenant_id": "demo-bank",
+    "ci_id": "CI-MOBILE-GW-01",
+    "service": "mobile-gateway",
+    "signals": [
+      {
+        "signal_id": "sig-memory_exhaustion-trend",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-MOBILE-GW-01",
+        "service": "mobile-gateway",
+        "detector": "trend",
+        "failure_type": "memory_exhaustion",
+        "metric": "1 - MemAvailable/MemTotal",
+        "template": null,
+        "value": 0.9,
+        "threshold": 0.98,
+        "eta_minutes": 13,
+        "score": 0.85,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "1 - node_memory_MemAvailable_bytes{ci_id=\"CI-MOBILE-GW-01\"} / node_memory_MemTotal_bytes{ci_id=\"CI-MOBILE-GW-01\"}",
+        "labels": {}
+      }
+    ],
+    "predicted_failure": "memory_exhaustion",
+    "eta_minutes": 13,
+    "confidence": 0.85,
+    "recent_changes": [
+      {
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-MOBILE-GW-01",
+        "change_id": "CHG0031337",
+        "kind": "deploy",
+        "summary": "mobile-gateway release 4.12 (response cache)",
+        "ts": "2026-11-02T07:10:00Z"
+      }
+    ],
+    "grafana_links": [],
+    "first_seen": "2026-11-02T09:00:00Z",
+    "last_seen": "2026-11-02T09:00:00Z"
+  },
+  "tool_results": [
+    {
+      "name": "prometheus_range_query",
+      "query": "1 - node_memory_MemAvailable_bytes{ci_id=\"CI-MOBILE-GW-01\"} / node_memory_MemTotal_bytes{ci_id=\"CI-MOBILE-GW-01\"}",
+      "result": "{\"result\":[{\"values\":[[1,\"0.62\"],[2,\"0.71\"],[3,\"0.83\"],[4,\"0.91\"]]}]}"
+    }
+  ],
+  "recorded": {
+    "model_id": "recorded:claude-or-qwen",
+    "raw_output": "{\n \"is_incident\": true,\n \"confidence\": 0.82,\n \"predicted_failure\": \"memory_exhaustion\",\n \"eta_minutes\": 13,\n \"root_cause\": \"Memory has grown steadily since deploy CHG0031337 (release 4.12 response cache) \\u2014 likely an unbounded cache leak.\",\n \"evidence\": [\n  {\n   \"query\": \"1 - node_memory_MemAvailable_bytes{ci_id=\\\"CI-MOBILE-GW-01\\\"} / node_memory_MemTotal_bytes{ci_id=\\\"CI-MOBILE-GW-01\\\"}\",\n   \"excerpt\": \"0.62 0.71 0.83 0.91\"\n  }\n ],\n \"recommended_actions\": [\n  \"Capture heap dump\",\n  \"Roll back to 4.11 via change request\"\n ],\n \"runbook_ref\": \"RB-MEM-001\"\n}"
+  },
+  "expected": {
+    "status": "verified",
+    "root_cause_keywords": [
+      "release",
+      "4.12",
+      "deploy",
+      "cache"
+    ],
+    "runbook_ref": "RB-MEM-001"
+  }
+}

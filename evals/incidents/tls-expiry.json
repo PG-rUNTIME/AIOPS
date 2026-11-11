@@ -1,0 +1,55 @@
+{
+  "id": "tls-expiry",
+  "description": "tls_certificate_expiry on CI-MOBILE-GW-01",
+  "candidate": {
+    "incident_key": "inc-eval-tls-expiry-0000",
+    "tenant_id": "demo-bank",
+    "ci_id": "CI-MOBILE-GW-01",
+    "service": "mobile-gateway",
+    "signals": [
+      {
+        "signal_id": "sig-tls_certificate_expiry-log_template",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-MOBILE-GW-01",
+        "service": "mobile-gateway",
+        "detector": "log_template",
+        "failure_type": "tls_certificate_expiry",
+        "metric": null,
+        "template": "x509: certificate has expired or is not yet valid",
+        "value": 12,
+        "threshold": 0.98,
+        "eta_minutes": null,
+        "score": 0.7,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "{ci_id=\"CI-MOBILE-GW-01\"} |= \"x509\"",
+        "labels": {}
+      }
+    ],
+    "predicted_failure": "tls_certificate_expiry",
+    "eta_minutes": null,
+    "confidence": 0.85,
+    "recent_changes": [],
+    "grafana_links": [],
+    "first_seen": "2026-11-02T09:00:00Z",
+    "last_seen": "2026-11-02T09:00:00Z"
+  },
+  "tool_results": [
+    {
+      "name": "prometheus_query",
+      "query": "(probe_ssl_earliest_cert_expiry{instance=\"https://api.bank.example\"} - time()) / 86400",
+      "result": "{\"result\":[{\"value\":[1,\"-0.2\"]}]}"
+    }
+  ],
+  "recorded": {
+    "model_id": "recorded:claude-or-qwen",
+    "raw_output": "{\n \"is_incident\": true,\n \"confidence\": 0.82,\n \"predicted_failure\": \"tls_certificate_expiry\",\n \"eta_minutes\": null,\n \"root_cause\": \"The API TLS certificate expired about 5 hours ago (-0.2 days remaining).\",\n \"evidence\": [\n  {\n   \"query\": \"(probe_ssl_earliest_cert_expiry{instance=\\\"https://api.bank.example\\\"} - time()) / 86400\",\n   \"excerpt\": \"-0.2\"\n  }\n ],\n \"recommended_actions\": [\n  \"Renew certificate via PKI\",\n  \"Deploy to all LB members\"\n ],\n \"runbook_ref\": \"RB-TLS-001\"\n}"
+  },
+  "expected": {
+    "status": "verified",
+    "root_cause_keywords": [
+      "certificate",
+      "expired"
+    ],
+    "runbook_ref": "RB-TLS-001"
+  }
+}

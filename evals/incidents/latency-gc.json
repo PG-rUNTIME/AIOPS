@@ -1,0 +1,56 @@
+{
+  "id": "latency-gc",
+  "description": "latency_degradation on CI-MOBILE-GW-01",
+  "candidate": {
+    "incident_key": "inc-eval-latency-gc-0000",
+    "tenant_id": "demo-bank",
+    "ci_id": "CI-MOBILE-GW-01",
+    "service": "mobile-gateway",
+    "signals": [
+      {
+        "signal_id": "sig-latency_degradation-trend",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-MOBILE-GW-01",
+        "service": "mobile-gateway",
+        "detector": "trend",
+        "failure_type": "latency_degradation",
+        "metric": "http_server_request_duration_p99_seconds",
+        "template": null,
+        "value": 0.9,
+        "threshold": 0.98,
+        "eta_minutes": 12,
+        "score": 0.85,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "http_server_request_duration_p99_seconds{ci_id=\"CI-MOBILE-GW-01\"}",
+        "labels": {}
+      }
+    ],
+    "predicted_failure": "latency_degradation",
+    "eta_minutes": 12,
+    "confidence": 0.85,
+    "recent_changes": [],
+    "grafana_links": [],
+    "first_seen": "2026-11-02T09:00:00Z",
+    "last_seen": "2026-11-02T09:00:00Z"
+  },
+  "tool_results": [
+    {
+      "name": "prometheus_query",
+      "query": "rate(jvm_gc_pause_seconds_sum{ci_id=\"CI-MOBILE-GW-01\"}[5m])",
+      "result": "{\"result\":[{\"value\":[1,\"0.41\"]}]}"
+    }
+  ],
+  "recorded": {
+    "model_id": "recorded:claude-or-qwen",
+    "raw_output": "{\n \"is_incident\": true,\n \"confidence\": 0.82,\n \"predicted_failure\": \"latency_degradation\",\n \"eta_minutes\": 12,\n \"root_cause\": \"JVM GC pauses consume 41% of wall time, driving p99 latency up.\",\n \"evidence\": [\n  {\n   \"query\": \"rate(jvm_gc_pause_seconds_sum{ci_id=\\\"CI-MOBILE-GW-01\\\"}[5m])\",\n   \"excerpt\": \"0.41\"\n  }\n ],\n \"recommended_actions\": [\n  \"Raise heap / tune GC\",\n  \"Scale out\"\n ],\n \"runbook_ref\": \"RB-LAT-001\"\n}"
+  },
+  "expected": {
+    "status": "verified",
+    "root_cause_keywords": [
+      "gc",
+      "garbage",
+      "pause"
+    ],
+    "runbook_ref": "RB-LAT-001"
+  }
+}

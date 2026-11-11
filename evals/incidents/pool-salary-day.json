@@ -1,0 +1,78 @@
+{
+  "id": "pool-salary-day",
+  "description": "connection_pool_exhaustion on CI-PAY-API-01",
+  "candidate": {
+    "incident_key": "inc-eval-pool-salary-day-0000",
+    "tenant_id": "demo-bank",
+    "ci_id": "CI-PAY-API-01",
+    "service": "payments-api",
+    "signals": [
+      {
+        "signal_id": "sig-connection_pool_exhaustion-forecast",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-PAY-API-01",
+        "service": "payments-api",
+        "detector": "forecast",
+        "failure_type": "connection_pool_exhaustion",
+        "metric": "in_use/max",
+        "template": null,
+        "value": 0.9,
+        "threshold": 0.98,
+        "eta_minutes": 7,
+        "score": 0.85,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "db_pool_connections_in_use{ci_id=\"CI-PAY-API-01\"} / db_pool_connections_max{ci_id=\"CI-PAY-API-01\"}",
+        "labels": {}
+      },
+      {
+        "signal_id": "sig-connection_pool_exhaustion-log_template",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-PAY-API-01",
+        "service": "payments-api",
+        "detector": "log_template",
+        "failure_type": "connection_pool_exhaustion",
+        "metric": null,
+        "template": "HikariPool-1 - Connection is not available, timeout acquiring connection after <NUM>",
+        "value": 40,
+        "threshold": 0.98,
+        "eta_minutes": null,
+        "score": 0.85,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "{ci_id=\"CI-PAY-API-01\"} |~ \"timeout acquiring\"",
+        "labels": {}
+      }
+    ],
+    "predicted_failure": "connection_pool_exhaustion",
+    "eta_minutes": 7,
+    "confidence": 0.85,
+    "recent_changes": [],
+    "grafana_links": [],
+    "first_seen": "2026-11-02T09:00:00Z",
+    "last_seen": "2026-11-02T09:00:00Z"
+  },
+  "tool_results": [
+    {
+      "name": "prometheus_query",
+      "query": "db_pool_connections_in_use{ci_id=\"CI-PAY-API-01\"} / db_pool_connections_max{ci_id=\"CI-PAY-API-01\"}",
+      "result": "{\"result\":[{\"value\":[1,\"0.94\"]}]}"
+    },
+    {
+      "name": "prometheus_query",
+      "query": "histogram_quantile(0.99, rate(db_query_duration_seconds_bucket{ci_id=\"CI-PAY-API-01\"}[5m]))",
+      "result": "{\"result\":[{\"metric\":{\"query\":\"settlement_lookup\"},\"value\":[1,\"8.4\"]}]}"
+    }
+  ],
+  "recorded": {
+    "model_id": "recorded:claude-or-qwen",
+    "raw_output": "{\n \"is_incident\": true,\n \"confidence\": 0.82,\n \"predicted_failure\": \"connection_pool_exhaustion\",\n \"eta_minutes\": 7,\n \"root_cause\": \"A slow settlement_lookup query (p99 8.4s) holds connections, exhausting the pool during peak load.\",\n \"evidence\": [\n  {\n   \"query\": \"histogram_quantile(0.99, rate(db_query_duration_seconds_bucket{ci_id=\\\"CI-PAY-API-01\\\"}[5m]))\",\n   \"excerpt\": \"settlement_lookup 8.4\"\n  }\n ],\n \"recommended_actions\": [\n  \"Check pg_stat_activity for long-running queries\",\n  \"Add index for settlement lookup\"\n ],\n \"runbook_ref\": \"RB-DBPOOL-001\"\n}"
+  },
+  "expected": {
+    "status": "verified",
+    "root_cause_keywords": [
+      "slow",
+      "settlement",
+      "query"
+    ],
+    "runbook_ref": "RB-DBPOOL-001"
+  }
+}

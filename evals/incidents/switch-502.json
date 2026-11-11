@@ -1,0 +1,55 @@
+{
+  "id": "switch-502",
+  "description": "error_spike on CI-PAY-API-01",
+  "candidate": {
+    "incident_key": "inc-eval-switch-502-0000",
+    "tenant_id": "demo-bank",
+    "ci_id": "CI-PAY-API-01",
+    "service": "payments-api",
+    "signals": [
+      {
+        "signal_id": "sig-error_spike-log_template",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-PAY-API-01",
+        "service": "payments-api",
+        "detector": "log_template",
+        "failure_type": "error_spike",
+        "metric": null,
+        "template": "PaymentProcessor failed to settle txn <NUM>: upstream 502 from switch <IP>",
+        "value": 40,
+        "threshold": 0.98,
+        "eta_minutes": null,
+        "score": 0.5,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "{ci_id=\"CI-PAY-API-01\"} |~ \"upstream 502\"",
+        "labels": {}
+      }
+    ],
+    "predicted_failure": "error_spike",
+    "eta_minutes": null,
+    "confidence": 0.85,
+    "recent_changes": [],
+    "grafana_links": [],
+    "first_seen": "2026-11-02T09:00:00Z",
+    "last_seen": "2026-11-02T09:00:00Z"
+  },
+  "tool_results": [
+    {
+      "name": "loki_query",
+      "query": "{ci_id=\"CI-PAY-API-01\"} |~ \"upstream 502\"",
+      "result": "PaymentProcessor failed to settle txn 448812: upstream 502 from switch 10.20.4.7\nPaymentProcessor failed to settle txn 448813: upstream 502 from switch 10.20.4.7"
+    }
+  ],
+  "recorded": {
+    "model_id": "recorded:claude-or-qwen",
+    "raw_output": "{\n \"is_incident\": true,\n \"confidence\": 0.82,\n \"predicted_failure\": \"error_spike\",\n \"eta_minutes\": null,\n \"root_cause\": \"Upstream national payment switch at 10.20.4.7 is returning 502s; settlements fail downstream.\",\n \"evidence\": [\n  {\n   \"query\": \"{ci_id=\\\"CI-PAY-API-01\\\"} |~ \\\"upstream 502\\\"\",\n   \"excerpt\": \"upstream 502 from switch 10.20.4.7\"\n  }\n ],\n \"recommended_actions\": [\n  \"Check switch status page / maintenance feed\",\n  \"Queue settlements for retry\"\n ],\n \"runbook_ref\": \"RB-ERR-001\"\n}"
+  },
+  "expected": {
+    "status": "verified",
+    "root_cause_keywords": [
+      "switch",
+      "upstream"
+    ],
+    "runbook_ref": "RB-ERR-001"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "id": "wan-flap-optic",
+  "description": "interface_flap on CI-NET-RTR-HRE-01",
+  "candidate": {
+    "incident_key": "inc-eval-wan-flap-optic-0000",
+    "tenant_id": "demo-bank",
+    "ci_id": "CI-NET-RTR-HRE-01",
+    "service": "wan-router",
+    "signals": [
+      {
+        "signal_id": "sig-interface_flap-log_template",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-NET-RTR-HRE-01",
+        "service": "wan-router",
+        "detector": "log_template",
+        "failure_type": "interface_flap",
+        "metric": null,
+        "template": "%LINK-3-UPDOWN: Interface GigabitEthernet0/<NUM>, changed state to down",
+        "value": 6,
+        "threshold": 0.98,
+        "eta_minutes": null,
+        "score": 0.85,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "{ci_id=\"CI-NET-RTR-HRE-01\"} |~ \"UPDOWN\"",
+        "labels": {
+          "sample": "%LINK-3-UPDOWN: Interface GigabitEthernet0/2, changed state to down"
+        }
+      }
+    ],
+    "predicted_failure": "interface_flap",
+    "eta_minutes": null,
+    "confidence": 0.85,
+    "recent_changes": [],
+    "grafana_links": [],
+    "first_seen": "2026-11-02T09:00:00Z",
+    "last_seen": "2026-11-02T09:00:00Z"
+  },
+  "tool_results": [
+    {
+      "name": "prometheus_query",
+      "query": "rate(ifInErrors{ci_id=\"CI-NET-RTR-HRE-01\",ifName=\"Gi0/2\"}[5m])",
+      "result": "{\"result\":[{\"value\":[1,\"37.5\"]}]}"
+    }
+  ],
+  "recorded": {
+    "model_id": "recorded:claude-or-qwen",
+    "raw_output": "{\n \"is_incident\": true,\n \"confidence\": 0.82,\n \"predicted_failure\": \"interface_flap\",\n \"eta_minutes\": null,\n \"root_cause\": \"Gi0/2 is flapping with rising input errors (37.5/s) \\u2014 consistent with a degraded optic or cable on the carrier hand-off.\",\n \"evidence\": [\n  {\n   \"query\": \"rate(ifInErrors{ci_id=\\\"CI-NET-RTR-HRE-01\\\",ifName=\\\"Gi0/2\\\"}[5m])\",\n   \"excerpt\": \"37.5\"\n  }\n ],\n \"recommended_actions\": [\n  \"Swap optic on Gi0/2\",\n  \"Fail over to secondary carrier\"\n ],\n \"runbook_ref\": \"RB-NET-001\"\n}"
+  },
+  "expected": {
+    "status": "verified",
+    "root_cause_keywords": [
+      "optic",
+      "crc",
+      "errors",
+      "cable"
+    ],
+    "runbook_ref": "RB-NET-001"
+  }
+}

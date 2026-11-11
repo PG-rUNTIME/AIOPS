@@ -1,0 +1,60 @@
+{
+  "id": "noise-batch-backup",
+  "description": "disk_full on CI-CORE-DB-01",
+  "candidate": {
+    "incident_key": "inc-eval-noise-batch-backup-0000",
+    "tenant_id": "demo-bank",
+    "ci_id": "CI-CORE-DB-01",
+    "service": "core-banking-db",
+    "signals": [
+      {
+        "signal_id": "sig-disk_full-forecast",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-CORE-DB-01",
+        "service": "core-banking-db",
+        "detector": "forecast",
+        "failure_type": "disk_full",
+        "metric": "1 - avail/size",
+        "template": null,
+        "value": 0.9,
+        "threshold": 0.98,
+        "eta_minutes": 14,
+        "score": 0.6,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "1 - node_filesystem_avail_bytes{ci_id=\"CI-CORE-DB-01\",mountpoint=\"/backup\"} / node_filesystem_size_bytes{ci_id=\"CI-CORE-DB-01\",mountpoint=\"/backup\"}",
+        "labels": {}
+      }
+    ],
+    "predicted_failure": "disk_full",
+    "eta_minutes": 14,
+    "confidence": 0.85,
+    "recent_changes": [],
+    "grafana_links": [],
+    "first_seen": "2026-11-02T09:00:00Z",
+    "last_seen": "2026-11-02T09:00:00Z"
+  },
+  "tool_results": [
+    {
+      "name": "prometheus_query",
+      "query": "1 - node_filesystem_avail_bytes{ci_id=\"CI-CORE-DB-01\",mountpoint=\"/backup\"} / node_filesystem_size_bytes{ci_id=\"CI-CORE-DB-01\",mountpoint=\"/backup\"}",
+      "result": "{\"result\":[{\"value\":[1,\"0.81\"]}]}"
+    },
+    {
+      "name": "loki_query",
+      "query": "{ci_id=\"CI-CORE-DB-01\"} |= \"backup\"",
+      "result": "backup job nightly-full started; retention cleanup scheduled at completion"
+    }
+  ],
+  "recorded": {
+    "model_id": "recorded:claude-or-qwen",
+    "raw_output": "{\n \"is_incident\": false,\n \"confidence\": 0.7,\n \"predicted_failure\": \"disk_full\",\n \"eta_minutes\": 14,\n \"root_cause\": \"Nightly backup writes temporarily; retention cleanup runs at completion, so the volume will not fill.\",\n \"evidence\": [\n  {\n   \"query\": \"{ci_id=\\\"CI-CORE-DB-01\\\"} |= \\\"backup\\\"\",\n   \"excerpt\": \"retention cleanup scheduled at completion\"\n  }\n ],\n \"recommended_actions\": [],\n \"runbook_ref\": null\n}"
+  },
+  "expected": {
+    "status": "noise",
+    "root_cause_keywords": [
+      "backup",
+      "retention"
+    ],
+    "runbook_ref": null
+  }
+}

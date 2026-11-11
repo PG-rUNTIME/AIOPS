@@ -1,0 +1,62 @@
+{
+  "id": "cpu-month-end",
+  "description": "cpu_saturation on CI-PAY-API-02",
+  "candidate": {
+    "incident_key": "inc-eval-cpu-month-end-0000",
+    "tenant_id": "demo-bank",
+    "ci_id": "CI-PAY-API-02",
+    "service": "payments-api",
+    "signals": [
+      {
+        "signal_id": "sig-cpu_saturation-forecast",
+        "tenant_id": "demo-bank",
+        "ci_id": "CI-PAY-API-02",
+        "service": "payments-api",
+        "detector": "forecast",
+        "failure_type": "cpu_saturation",
+        "metric": "node_cpu_utilisation",
+        "template": null,
+        "value": 0.9,
+        "threshold": 0.98,
+        "eta_minutes": 8,
+        "score": 0.85,
+        "ts": "2026-11-02T09:00:00Z",
+        "query": "node_cpu_utilisation{ci_id=\"CI-PAY-API-02\"}",
+        "labels": {}
+      }
+    ],
+    "predicted_failure": "cpu_saturation",
+    "eta_minutes": 8,
+    "confidence": 0.85,
+    "recent_changes": [],
+    "grafana_links": [],
+    "first_seen": "2026-11-02T09:00:00Z",
+    "last_seen": "2026-11-02T09:00:00Z"
+  },
+  "tool_results": [
+    {
+      "name": "prometheus_query",
+      "query": "sum(rate(http_requests_total{service=\"payments-api\"}[5m]))",
+      "result": "{\"result\":[{\"value\":[1,\"2310\"]}]}"
+    },
+    {
+      "name": "prometheus_query",
+      "query": "sum(rate(http_requests_total{service=\"payments-api\"}[5m] offset 1w))",
+      "result": "{\"result\":[{\"value\":[1,\"980\"]}]}"
+    }
+  ],
+  "recorded": {
+    "model_id": "recorded:claude-or-qwen",
+    "raw_output": "{\n \"is_incident\": true,\n \"confidence\": 0.82,\n \"predicted_failure\": \"cpu_saturation\",\n \"eta_minutes\": 8,\n \"root_cause\": \"Month-end traffic peak: request rate 2310/s vs 980/s same time last week drives CPU toward saturation.\",\n \"evidence\": [\n  {\n   \"query\": \"sum(rate(http_requests_total{service=\\\"payments-api\\\"}[5m]))\",\n   \"excerpt\": \"2310\"\n  },\n  {\n   \"query\": \"sum(rate(http_requests_total{service=\\\"payments-api\\\"}[5m] offset 1w))\",\n   \"excerpt\": \"980\"\n  }\n ],\n \"recommended_actions\": [\n  \"Scale out payments-api\",\n  \"Pause non-critical batch jobs\"\n ],\n \"runbook_ref\": \"RB-CPU-001\"\n}"
+  },
+  "expected": {
+    "status": "verified",
+    "root_cause_keywords": [
+      "traffic",
+      "peak",
+      "month-end",
+      "load"
+    ],
+    "runbook_ref": "RB-CPU-001"
+  }
+}
