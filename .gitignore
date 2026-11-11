@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+junit.xml
+*.db
+.env
+evals/report.json
+rendered.yaml
+deploy/helm/*/charts/*.tgz

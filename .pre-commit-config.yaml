@@ -1,0 +1,22 @@
+# Mirrors CI's fast gates. Install: uv run pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - {id: ruff, name: ruff, entry: uv run ruff check --fix, language: system, types: [python]}
+      - {id: ruff-format, name: ruff format, entry: uv run ruff format, language: system, types: [python]}
+      - {id: mypy, name: mypy, entry: uv run mypy, language: system, pass_filenames: false, types: [python]}
+      - {id: contracts, name: contracts up to date, entry: uv run python scripts/gen_contracts.py --check,
+         language: system, pass_filenames: false, files: '^(libs|contracts)/'}
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        args: [--allow-multiple-documents, --unsafe]
+        exclude: ^deploy/helm/.*/templates/
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks

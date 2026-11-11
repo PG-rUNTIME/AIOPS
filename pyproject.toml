@@ -1,0 +1,107 @@
+[project]
+name = "aiops-platform"
+version = "0.1.0"
+description = "Predictive AIOps platform (monorepo root)"
+requires-python = ">=3.12,<3.13"
+license = { text = "Apache-2.0" }
+
+[tool.uv.workspace]
+members = ["libs/*", "services/*"]
+
+[tool.uv.sources]
+aiops-common = { workspace = true }
+detector-workers = { workspace = true }
+correlator = { workspace = true }
+agent-gateway = { workspace = true }
+router = { workspace = true }
+feedback-service = { workspace = true }
+control-plane-api = { workspace = true }
+ingest-gateway = { workspace = true }
+chaos-sim = { workspace = true }
+mock-servicenow = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "pytest-cov>=5.0",
+  "respx>=0.21",
+  "ruff>=0.7",
+  "mypy>=1.13",
+  "testcontainers[kafka,postgres]>=4.8",
+  "pre-commit>=4.0",
+  "pyyaml>=6.0",
+  "types-PyYAML",
+  "detector-workers", "correlator", "agent-gateway", "router",
+  "feedback-service", "control-plane-api", "ingest-gateway", "chaos-sim", "mock-servicenow",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "RUF", "SIM", "PT"]
+ignore = ["S101", "S311", "RUF012", "RUF001", "RUF002", "UP047"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+  "aiops_common", "detector_workers", "correlator", "agent_gateway", "router", "feedback_service",
+  "control_plane", "ingest_gateway", "chaos_sim", "mock_servicenow", "tests",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S", "PT011", "PT018", "E501"]
+"evals/**" = ["S", "ASYNC240"]
+"scripts/**" = ["E501", "T201"]
+"tests/**" = ["S", "PT018", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = [
+  "$MYPY_CONFIG_FILE_DIR/libs/aiops-common/src",
+  "$MYPY_CONFIG_FILE_DIR/services/detector-workers/src",
+  "$MYPY_CONFIG_FILE_DIR/services/correlator/src",
+  "$MYPY_CONFIG_FILE_DIR/services/agent-gateway/src",
+  "$MYPY_CONFIG_FILE_DIR/services/router/src",
+  "$MYPY_CONFIG_FILE_DIR/services/feedback-service/src",
+  "$MYPY_CONFIG_FILE_DIR/services/control-plane-api/src",
+  "$MYPY_CONFIG_FILE_DIR/services/ingest-gateway/src",
+  "$MYPY_CONFIG_FILE_DIR/services/chaos-sim/src",
+  "$MYPY_CONFIG_FILE_DIR/services/mock-servicenow/src",
+]
+packages = [
+  "aiops_common", "detector_workers", "correlator", "agent_gateway", "router",
+  "feedback_service", "control_plane", "ingest_gateway", "chaos_sim", "mock_servicenow",
+]
+namespace_packages = true
+explicit_package_bases = true
+exclude = ["(^|/)tests/", "^evals/", "^scripts/", "/alembic/"]
+
+[[tool.mypy.overrides]]
+module = ["aiokafka.*", "drain3.*", "sklearn.*", "chronos.*", "testcontainers.*", "jsonschema.*", "prometheus_client.*", "pandas.*", "aiosmtplib.*", "jwt.*", "asyncpg.*", "ansible_runner.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["libs", "services", "tests", "evals"]
+markers = [
+  "integration: needs Docker (Testcontainers)",
+  "e2e: end-to-end pipeline test",
+  "evals: LLM eval suite",
+]
+addopts = "-q -m 'not integration' --import-mode=importlib"
+
+[tool.coverage.run]
+source = ["libs/aiops-common/src", "services"]
+omit = ["*/tests/*", "*/main.py"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = false

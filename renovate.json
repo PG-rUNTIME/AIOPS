@@ -1,0 +1,9 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", "docker:pinDigests", "helpers:pinGitHubActionDigests"],
+  "packageRules": [
+    {"matchManagers": ["pep621"], "groupName": "python deps", "schedule": ["before 6am on monday"]},
+    {"matchDatasources": ["docker"], "matchUpdateTypes": ["digest"], "automerge": true}
+  ],
+  "lockFileMaintenance": {"enabled": true}
+}
