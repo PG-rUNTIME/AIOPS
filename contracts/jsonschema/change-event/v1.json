@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "ChangeKind": {
+      "enum": [
+        "deploy",
+        "config",
+        "infra",
+        "change_request"
+      ],
+      "title": "ChangeKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.aiops.local/change-event/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "changes.events payload: deploys, config pushes, CRs.",
+  "properties": {
+    "change_id": {
+      "title": "Change Id",
+      "type": "string"
+    },
+    "ci_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Ci Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/ChangeKind"
+    },
+    "summary": {
+      "maxLength": 1000,
+      "title": "Summary",
+      "type": "string"
+    },
+    "tenant_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    },
+    "url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Url"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "ci_id",
+    "change_id",
+    "kind",
+    "summary",
+    "ts"
+  ],
+  "title": "ChangeEvent",
+  "type": "object",
+  "x-cloudevents-type": "io.aiops.changes.event.v1",
+  "x-topic": "changes.events"
+}

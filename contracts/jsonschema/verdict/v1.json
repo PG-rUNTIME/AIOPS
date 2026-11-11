@@ -1,0 +1,543 @@
+{
+  "$defs": {
+    "CandidateIncident": {
+      "additionalProperties": false,
+      "description": "incidents.candidate payload: correlated signals for one CI.",
+      "properties": {
+        "ci_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Ci Id",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "eta_minutes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eta Minutes"
+        },
+        "first_seen": {
+          "format": "date-time",
+          "title": "First Seen",
+          "type": "string"
+        },
+        "grafana_links": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Grafana Links",
+          "type": "array"
+        },
+        "incident_key": {
+          "maxLength": 128,
+          "minLength": 16,
+          "title": "Incident Key",
+          "type": "string"
+        },
+        "is_update": {
+          "default": false,
+          "description": "True when re-emitted for a known episode",
+          "title": "Is Update",
+          "type": "boolean"
+        },
+        "last_seen": {
+          "format": "date-time",
+          "title": "Last Seen",
+          "type": "string"
+        },
+        "predicted_failure": {
+          "title": "Predicted Failure",
+          "type": "string"
+        },
+        "recent_changes": {
+          "items": {
+            "$ref": "#/$defs/ChangeEvent"
+          },
+          "title": "Recent Changes",
+          "type": "array"
+        },
+        "resolved": {
+          "default": false,
+          "description": "True when the risk has passed (send Clear)",
+          "title": "Resolved",
+          "type": "boolean"
+        },
+        "service": {
+          "title": "Service",
+          "type": "string"
+        },
+        "signals": {
+          "items": {
+            "$ref": "#/$defs/Signal"
+          },
+          "minItems": 1,
+          "title": "Signals",
+          "type": "array"
+        },
+        "tenant_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Tenant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "incident_key",
+        "tenant_id",
+        "ci_id",
+        "service",
+        "signals",
+        "predicted_failure",
+        "confidence",
+        "first_seen",
+        "last_seen"
+      ],
+      "title": "CandidateIncident",
+      "type": "object"
+    },
+    "ChangeEvent": {
+      "additionalProperties": false,
+      "description": "changes.events payload: deploys, config pushes, CRs.",
+      "properties": {
+        "change_id": {
+          "title": "Change Id",
+          "type": "string"
+        },
+        "ci_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Ci Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ChangeKind"
+        },
+        "summary": {
+          "maxLength": 1000,
+          "title": "Summary",
+          "type": "string"
+        },
+        "tenant_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "ts": {
+          "format": "date-time",
+          "title": "Ts",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "tenant_id",
+        "ci_id",
+        "change_id",
+        "kind",
+        "summary",
+        "ts"
+      ],
+      "title": "ChangeEvent",
+      "type": "object"
+    },
+    "ChangeKind": {
+      "enum": [
+        "deploy",
+        "config",
+        "infra",
+        "change_request"
+      ],
+      "title": "ChangeKind",
+      "type": "string"
+    },
+    "DetectorKind": {
+      "enum": [
+        "trend",
+        "forecast",
+        "anomaly",
+        "log_template"
+      ],
+      "title": "DetectorKind",
+      "type": "string"
+    },
+    "EvidenceItem": {
+      "additionalProperties": false,
+      "properties": {
+        "excerpt": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "log_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pointer to a log line",
+          "title": "Log Ref"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "PromQL/LogQL actually executed",
+          "title": "Query"
+        }
+      },
+      "required": [
+        "excerpt"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "ForecastQuantiles": {
+      "additionalProperties": false,
+      "properties": {
+        "p10": {
+          "title": "P10",
+          "type": "number"
+        },
+        "p50": {
+          "title": "P50",
+          "type": "number"
+        },
+        "p90": {
+          "title": "P90",
+          "type": "number"
+        }
+      },
+      "required": [
+        "p10",
+        "p50",
+        "p90"
+      ],
+      "title": "ForecastQuantiles",
+      "type": "object"
+    },
+    "Signal": {
+      "additionalProperties": false,
+      "description": "signals.detected payload: one detector firing on one series/template.",
+      "properties": {
+        "ci_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Ci Id",
+          "type": "string"
+        },
+        "detector": {
+          "$ref": "#/$defs/DetectorKind"
+        },
+        "eta_minutes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eta Minutes"
+        },
+        "failure_type": {
+          "description": "Failure family, e.g. disk_full, memory_exhaustion",
+          "title": "Failure Type",
+          "type": "string"
+        },
+        "forecast": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ForecastQuantiles"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "metric": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "PromQL/LogQL that reproduces the signal",
+          "title": "Query"
+        },
+        "score": {
+          "description": "Detector confidence 0..1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Score",
+          "type": "number"
+        },
+        "service": {
+          "default": "unknown",
+          "title": "Service",
+          "type": "string"
+        },
+        "signal_id": {
+          "title": "Signal Id",
+          "type": "string"
+        },
+        "template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Template"
+        },
+        "tenant_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        },
+        "ts": {
+          "format": "date-time",
+          "title": "Ts",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "signal_id",
+        "tenant_id",
+        "ci_id",
+        "detector",
+        "failure_type",
+        "value",
+        "score",
+        "ts"
+      ],
+      "title": "Signal",
+      "type": "object"
+    },
+    "VerdictStatus": {
+      "enum": [
+        "verified",
+        "needs_human",
+        "unverified",
+        "noise",
+        "resolved"
+      ],
+      "title": "VerdictStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.aiops.local/verdict/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "incidents.verdict payload: LLMVerdict + provenance + the candidate.",
+  "properties": {
+    "candidate": {
+      "$ref": "#/$defs/CandidateIncident"
+    },
+    "ci_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Ci Id",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "downgrade_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Downgrade Reasons",
+      "type": "array"
+    },
+    "eta_minutes": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Eta Minutes"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceItem"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "incident_key": {
+      "title": "Incident Key",
+      "type": "string"
+    },
+    "is_incident": {
+      "title": "Is Incident",
+      "type": "boolean"
+    },
+    "latency_ms": {
+      "default": 0,
+      "title": "Latency Ms",
+      "type": "integer"
+    },
+    "model_id": {
+      "title": "Model Id",
+      "type": "string"
+    },
+    "predicted_failure": {
+      "maxLength": 200,
+      "title": "Predicted Failure",
+      "type": "string"
+    },
+    "prompt_version": {
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "recommended_actions": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Recommended Actions",
+      "type": "array"
+    },
+    "root_cause": {
+      "maxLength": 2000,
+      "title": "Root Cause",
+      "type": "string"
+    },
+    "runbook_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Runbook Ref"
+    },
+    "status": {
+      "$ref": "#/$defs/VerdictStatus"
+    },
+    "tenant_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "tokens_used": {
+      "default": 0,
+      "title": "Tokens Used",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "is_incident",
+    "confidence",
+    "predicted_failure",
+    "root_cause",
+    "incident_key",
+    "tenant_id",
+    "ci_id",
+    "status",
+    "model_id",
+    "prompt_version",
+    "candidate"
+  ],
+  "title": "Verdict",
+  "type": "object",
+  "x-cloudevents-type": "io.aiops.incident.verdict.v1",
+  "x-topic": "incidents.verdict"
+}

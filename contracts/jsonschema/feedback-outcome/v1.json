@@ -1,0 +1,114 @@
+{
+  "$defs": {
+    "Outcome": {
+      "enum": [
+        "true_positive",
+        "false_positive",
+        "missed"
+      ],
+      "title": "Outcome",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.aiops.local/feedback-outcome/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "feedback.outcomes payload.",
+  "properties": {
+    "actual_root_cause": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actual Root Cause"
+    },
+    "ci_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ci Id"
+    },
+    "failure_type": {
+      "title": "Failure Type",
+      "type": "string"
+    },
+    "incident_key": {
+      "title": "Incident Key",
+      "type": "string"
+    },
+    "lead_time_minutes": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lead Time Minutes"
+    },
+    "outcome": {
+      "$ref": "#/$defs/Outcome"
+    },
+    "rating": {
+      "anyOf": [
+        {
+          "maximum": 5,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rating"
+    },
+    "source": {
+      "default": "api",
+      "enum": [
+        "servicenow",
+        "chat",
+        "api"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "tenant_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    }
+  },
+  "required": [
+    "incident_key",
+    "tenant_id",
+    "failure_type",
+    "outcome"
+  ],
+  "title": "FeedbackOutcome",
+  "type": "object",
+  "x-cloudevents-type": "io.aiops.feedback.outcome.v1",
+  "x-topic": "feedback.outcomes"
+}

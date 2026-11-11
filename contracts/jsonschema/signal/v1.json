@@ -1,0 +1,184 @@
+{
+  "$defs": {
+    "DetectorKind": {
+      "enum": [
+        "trend",
+        "forecast",
+        "anomaly",
+        "log_template"
+      ],
+      "title": "DetectorKind",
+      "type": "string"
+    },
+    "ForecastQuantiles": {
+      "additionalProperties": false,
+      "properties": {
+        "p10": {
+          "title": "P10",
+          "type": "number"
+        },
+        "p50": {
+          "title": "P50",
+          "type": "number"
+        },
+        "p90": {
+          "title": "P90",
+          "type": "number"
+        }
+      },
+      "required": [
+        "p10",
+        "p50",
+        "p90"
+      ],
+      "title": "ForecastQuantiles",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.aiops.local/signal/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "signals.detected payload: one detector firing on one series/template.",
+  "properties": {
+    "ci_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Ci Id",
+      "type": "string"
+    },
+    "detector": {
+      "$ref": "#/$defs/DetectorKind"
+    },
+    "eta_minutes": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Eta Minutes"
+    },
+    "failure_type": {
+      "description": "Failure family, e.g. disk_full, memory_exhaustion",
+      "title": "Failure Type",
+      "type": "string"
+    },
+    "forecast": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ForecastQuantiles"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "metric": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Metric"
+    },
+    "query": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "PromQL/LogQL that reproduces the signal",
+      "title": "Query"
+    },
+    "score": {
+      "description": "Detector confidence 0..1",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Score",
+      "type": "number"
+    },
+    "service": {
+      "default": "unknown",
+      "title": "Service",
+      "type": "string"
+    },
+    "signal_id": {
+      "title": "Signal Id",
+      "type": "string"
+    },
+    "template": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Template"
+    },
+    "tenant_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "threshold": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Threshold"
+    },
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    },
+    "value": {
+      "title": "Value",
+      "type": "number"
+    }
+  },
+  "required": [
+    "signal_id",
+    "tenant_id",
+    "ci_id",
+    "detector",
+    "failure_type",
+    "value",
+    "score",
+    "ts"
+  ],
+  "title": "Signal",
+  "type": "object",
+  "x-cloudevents-type": "io.aiops.signal.detected.v1",
+  "x-topic": "signals.detected"
+}

@@ -1,0 +1,78 @@
+{
+  "$defs": {
+    "LogRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Attributes",
+          "type": "object"
+        },
+        "body": {
+          "maxLength": 16384,
+          "title": "Body",
+          "type": "string"
+        },
+        "severity": {
+          "default": "INFO",
+          "title": "Severity",
+          "type": "string"
+        },
+        "ts": {
+          "format": "date-time",
+          "title": "Ts",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ts",
+        "body"
+      ],
+      "title": "LogRecord",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.aiops.local/log-batch/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "telemetry.logs payload. Bodies are PII-redacted before they are published.",
+  "properties": {
+    "ci_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Ci Id",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/LogRecord"
+      },
+      "minItems": 1,
+      "title": "Records",
+      "type": "array"
+    },
+    "service": {
+      "default": "unknown",
+      "title": "Service",
+      "type": "string"
+    },
+    "tenant_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "ci_id",
+    "records"
+  ],
+  "title": "LogBatch",
+  "type": "object",
+  "x-cloudevents-type": "io.aiops.telemetry.logs.v1",
+  "x-topic": "telemetry.logs"
+}

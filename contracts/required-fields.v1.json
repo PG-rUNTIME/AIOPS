@@ -1,0 +1,68 @@
+{
+  "candidate-incident": [
+    "ci_id",
+    "confidence",
+    "first_seen",
+    "incident_key",
+    "last_seen",
+    "predicted_failure",
+    "service",
+    "signals",
+    "tenant_id"
+  ],
+  "change-event": [
+    "change_id",
+    "ci_id",
+    "kind",
+    "summary",
+    "tenant_id",
+    "ts"
+  ],
+  "feedback-outcome": [
+    "failure_type",
+    "incident_key",
+    "outcome",
+    "tenant_id"
+  ],
+  "log-batch": [
+    "ci_id",
+    "records",
+    "tenant_id"
+  ],
+  "metric-batch": [
+    "ci_id",
+    "points",
+    "tenant_id"
+  ],
+  "notification": [
+    "action",
+    "channel",
+    "ci_id",
+    "incident_key",
+    "notification_id",
+    "tenant_id"
+  ],
+  "signal": [
+    "ci_id",
+    "detector",
+    "failure_type",
+    "score",
+    "signal_id",
+    "tenant_id",
+    "ts",
+    "value"
+  ],
+  "verdict": [
+    "candidate",
+    "ci_id",
+    "confidence",
+    "incident_key",
+    "is_incident",
+    "model_id",
+    "predicted_failure",
+    "prompt_version",
+    "root_cause",
+    "status",
+    "tenant_id"
+  ]
+}

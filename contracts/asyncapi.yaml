@@ -1,0 +1,352 @@
+asyncapi: 3.0.0
+info:
+  title: AIOps platform event bus
+  version: 1.0.0
+  description: Every message is a CloudEvents 1.0 structured JSON envelope (tenantid + partitionkey extensions)
+    whose data validates against the versioned JSON Schema. Schemas evolve backward-compatibly only; breaking
+    changes get a new major version.
+defaultContentType: application/cloudevents+json
+servers:
+  dev:
+    host: kafka:9092
+    protocol: kafka
+  prod:
+    host: kafka-bootstrap.aiops.svc:9093
+    protocol: kafka-secure
+    security:
+    - $ref: '#/components/securitySchemes/scram'
+channels:
+  telemetry_metrics:
+    address: telemetry.metrics
+    description: Produced by ingest-gateway; consumed by detector-workers. Dead letters go to telemetry.metrics.dlq.
+    messages:
+      metric_batch:
+        $ref: '#/components/messages/metric_batch'
+    bindings:
+      kafka:
+        topic: telemetry.metrics
+        partitions: 24
+        replicas: 3
+        topicConfiguration:
+          cleanup.policy:
+          - delete
+          retention.ms: 604800000
+  telemetry_metrics_dlq:
+    address: telemetry.metrics.dlq
+    description: Dead letters with x-error / x-attempts headers.
+    messages:
+      metric_batch:
+        $ref: '#/components/messages/metric_batch'
+  telemetry_logs:
+    address: telemetry.logs
+    description: Produced by ingest-gateway; consumed by detector-workers. Dead letters go to telemetry.logs.dlq.
+    messages:
+      log_batch:
+        $ref: '#/components/messages/log_batch'
+    bindings:
+      kafka:
+        topic: telemetry.logs
+        partitions: 24
+        replicas: 3
+        topicConfiguration:
+          cleanup.policy:
+          - delete
+          retention.ms: 604800000
+  telemetry_logs_dlq:
+    address: telemetry.logs.dlq
+    description: Dead letters with x-error / x-attempts headers.
+    messages:
+      log_batch:
+        $ref: '#/components/messages/log_batch'
+  changes_events:
+    address: changes.events
+    description: Produced by change-collectors; consumed by correlator. Dead letters go to changes.events.dlq.
+    messages:
+      change_event:
+        $ref: '#/components/messages/change_event'
+    bindings:
+      kafka:
+        topic: changes.events
+        partitions: 24
+        replicas: 3
+        topicConfiguration:
+          cleanup.policy:
+          - delete
+          retention.ms: 604800000
+  changes_events_dlq:
+    address: changes.events.dlq
+    description: Dead letters with x-error / x-attempts headers.
+    messages:
+      change_event:
+        $ref: '#/components/messages/change_event'
+  signals_detected:
+    address: signals.detected
+    description: Produced by detector-workers; consumed by correlator. Dead letters go to signals.detected.dlq.
+    messages:
+      signal:
+        $ref: '#/components/messages/signal'
+    bindings:
+      kafka:
+        topic: signals.detected
+        partitions: 24
+        replicas: 3
+        topicConfiguration:
+          cleanup.policy:
+          - delete
+          retention.ms: 604800000
+  signals_detected_dlq:
+    address: signals.detected.dlq
+    description: Dead letters with x-error / x-attempts headers.
+    messages:
+      signal:
+        $ref: '#/components/messages/signal'
+  incidents_candidate:
+    address: incidents.candidate
+    description: Produced by correlator; consumed by agent-gateway. Dead letters go to incidents.candidate.dlq.
+    messages:
+      candidate_incident:
+        $ref: '#/components/messages/candidate_incident'
+    bindings:
+      kafka:
+        topic: incidents.candidate
+        partitions: 24
+        replicas: 3
+        topicConfiguration:
+          cleanup.policy:
+          - delete
+          retention.ms: 604800000
+  incidents_candidate_dlq:
+    address: incidents.candidate.dlq
+    description: Dead letters with x-error / x-attempts headers.
+    messages:
+      candidate_incident:
+        $ref: '#/components/messages/candidate_incident'
+  incidents_verdict:
+    address: incidents.verdict
+    description: Produced by agent-gateway; consumed by router, feedback-service. Dead letters go to incidents.verdict.dlq.
+    messages:
+      verdict:
+        $ref: '#/components/messages/verdict'
+    bindings:
+      kafka:
+        topic: incidents.verdict
+        partitions: 24
+        replicas: 3
+        topicConfiguration:
+          cleanup.policy:
+          - delete
+          retention.ms: 604800000
+  incidents_verdict_dlq:
+    address: incidents.verdict.dlq
+    description: Dead letters with x-error / x-attempts headers.
+    messages:
+      verdict:
+        $ref: '#/components/messages/verdict'
+  notifications_outbox:
+    address: notifications.outbox
+    description: Produced by router; consumed by audit/analytics. Dead letters go to notifications.outbox.dlq.
+    messages:
+      notification:
+        $ref: '#/components/messages/notification'
+    bindings:
+      kafka:
+        topic: notifications.outbox
+        partitions: 24
+        replicas: 3
+        topicConfiguration:
+          cleanup.policy:
+          - delete
+          retention.ms: 604800000
+  notifications_outbox_dlq:
+    address: notifications.outbox.dlq
+    description: Dead letters with x-error / x-attempts headers.
+    messages:
+      notification:
+        $ref: '#/components/messages/notification'
+  feedback_outcomes:
+    address: feedback.outcomes
+    description: Produced by feedback-service; consumed by threshold-tuning. Dead letters go to feedback.outcomes.dlq.
+    messages:
+      feedback_outcome:
+        $ref: '#/components/messages/feedback_outcome'
+    bindings:
+      kafka:
+        topic: feedback.outcomes
+        partitions: 24
+        replicas: 3
+        topicConfiguration:
+          cleanup.policy:
+          - delete
+          retention.ms: 604800000
+  feedback_outcomes_dlq:
+    address: feedback.outcomes.dlq
+    description: Dead letters with x-error / x-attempts headers.
+    messages:
+      feedback_outcome:
+        $ref: '#/components/messages/feedback_outcome'
+operations:
+  publish_telemetry_metrics:
+    action: send
+    channel:
+      $ref: '#/channels/telemetry_metrics'
+  consume_telemetry_metrics:
+    action: receive
+    channel:
+      $ref: '#/channels/telemetry_metrics'
+  publish_telemetry_logs:
+    action: send
+    channel:
+      $ref: '#/channels/telemetry_logs'
+  consume_telemetry_logs:
+    action: receive
+    channel:
+      $ref: '#/channels/telemetry_logs'
+  publish_changes_events:
+    action: send
+    channel:
+      $ref: '#/channels/changes_events'
+  consume_changes_events:
+    action: receive
+    channel:
+      $ref: '#/channels/changes_events'
+  publish_signals_detected:
+    action: send
+    channel:
+      $ref: '#/channels/signals_detected'
+  consume_signals_detected:
+    action: receive
+    channel:
+      $ref: '#/channels/signals_detected'
+  publish_incidents_candidate:
+    action: send
+    channel:
+      $ref: '#/channels/incidents_candidate'
+  consume_incidents_candidate:
+    action: receive
+    channel:
+      $ref: '#/channels/incidents_candidate'
+  publish_incidents_verdict:
+    action: send
+    channel:
+      $ref: '#/channels/incidents_verdict'
+  consume_incidents_verdict:
+    action: receive
+    channel:
+      $ref: '#/channels/incidents_verdict'
+  publish_notifications_outbox:
+    action: send
+    channel:
+      $ref: '#/channels/notifications_outbox'
+  consume_notifications_outbox:
+    action: receive
+    channel:
+      $ref: '#/channels/notifications_outbox'
+  publish_feedback_outcomes:
+    action: send
+    channel:
+      $ref: '#/channels/feedback_outcomes'
+  consume_feedback_outcomes:
+    action: receive
+    channel:
+      $ref: '#/channels/feedback_outcomes'
+components:
+  messages:
+    metric_batch:
+      name: io.aiops.telemetry.metrics.v1
+      contentType: application/cloudevents+json
+      headers:
+        $ref: ./jsonschema/cloudevent/v1.json
+      payload:
+        $ref: ./jsonschema/metric-batch/v1.json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: partition key tenant_id:ci_id
+    log_batch:
+      name: io.aiops.telemetry.logs.v1
+      contentType: application/cloudevents+json
+      headers:
+        $ref: ./jsonschema/cloudevent/v1.json
+      payload:
+        $ref: ./jsonschema/log-batch/v1.json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: partition key tenant_id:ci_id
+    change_event:
+      name: io.aiops.changes.event.v1
+      contentType: application/cloudevents+json
+      headers:
+        $ref: ./jsonschema/cloudevent/v1.json
+      payload:
+        $ref: ./jsonschema/change-event/v1.json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: partition key tenant_id:ci_id
+    signal:
+      name: io.aiops.signal.detected.v1
+      contentType: application/cloudevents+json
+      headers:
+        $ref: ./jsonschema/cloudevent/v1.json
+      payload:
+        $ref: ./jsonschema/signal/v1.json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: partition key tenant_id:ci_id
+    candidate_incident:
+      name: io.aiops.incident.candidate.v1
+      contentType: application/cloudevents+json
+      headers:
+        $ref: ./jsonschema/cloudevent/v1.json
+      payload:
+        $ref: ./jsonschema/candidate-incident/v1.json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: partition key tenant_id:ci_id
+    verdict:
+      name: io.aiops.incident.verdict.v1
+      contentType: application/cloudevents+json
+      headers:
+        $ref: ./jsonschema/cloudevent/v1.json
+      payload:
+        $ref: ./jsonschema/verdict/v1.json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: partition key tenant_id:ci_id
+    notification:
+      name: io.aiops.notification.v1
+      contentType: application/cloudevents+json
+      headers:
+        $ref: ./jsonschema/cloudevent/v1.json
+      payload:
+        $ref: ./jsonschema/notification/v1.json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: partition key tenant_id:ci_id
+    feedback_outcome:
+      name: io.aiops.feedback.outcome.v1
+      contentType: application/cloudevents+json
+      headers:
+        $ref: ./jsonschema/cloudevent/v1.json
+      payload:
+        $ref: ./jsonschema/feedback-outcome/v1.json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: partition key tenant_id:ci_id
+  securitySchemes:
+    scram:
+      type: scramSha512

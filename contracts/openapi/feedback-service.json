@@ -1,0 +1,460 @@
+{
+  "components": {
+    "schemas": {
+      "FeedbackOutcome": {
+        "additionalProperties": false,
+        "description": "feedback.outcomes payload.",
+        "properties": {
+          "actual_root_cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Root Cause"
+          },
+          "ci_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Id"
+          },
+          "failure_type": {
+            "title": "Failure Type",
+            "type": "string"
+          },
+          "incident_key": {
+            "title": "Incident Key",
+            "type": "string"
+          },
+          "lead_time_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Time Minutes"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/Outcome"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "source": {
+            "default": "api",
+            "enum": [
+              "servicenow",
+              "chat",
+              "api"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "tenant_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_-]*$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_key",
+          "tenant_id",
+          "failure_type",
+          "outcome"
+        ],
+        "title": "FeedbackOutcome",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "KPI": {
+        "properties": {
+          "failure_type": {
+            "title": "Failure Type",
+            "type": "string"
+          },
+          "false_positives": {
+            "title": "False Positives",
+            "type": "integer"
+          },
+          "median_lead_time_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Lead Time Minutes"
+          },
+          "missed": {
+            "title": "Missed",
+            "type": "integer"
+          },
+          "precision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision"
+          },
+          "recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recall"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "true_positives": {
+            "title": "True Positives",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "failure_type",
+          "true_positives",
+          "false_positives",
+          "missed",
+          "precision",
+          "recall",
+          "median_lead_time_minutes"
+        ],
+        "title": "KPI",
+        "type": "object"
+      },
+      "Outcome": {
+        "enum": [
+          "true_positive",
+          "false_positive",
+          "missed"
+        ],
+        "title": "Outcome",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "feedback-service",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/kpis": {
+      "get": {
+        "operationId": "get_kpis_v1_kpis_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tenant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/KPI"
+                  },
+                  "title": "Response Get Kpis V1 Kpis Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Kpis"
+      }
+    },
+    "/v1/outcomes": {
+      "post": {
+        "operationId": "post_outcome_v1_outcomes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackOutcome"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOutcome"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Outcome"
+      }
+    },
+    "/v1/predictions/{incident_key}": {
+      "get": {
+        "operationId": "get_prediction_v1_predictions__incident_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_key",
+            "required": true,
+            "schema": {
+              "title": "Incident Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Prediction V1 Predictions  Incident Key  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Prediction"
+      }
+    },
+    "/v1/webhooks/chat": {
+      "post": {
+        "operationId": "chat_webhook_v1_webhooks_chat_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-aiops-signature",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiops-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOutcome"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat Webhook"
+      }
+    },
+    "/v1/webhooks/servicenow": {
+      "post": {
+        "operationId": "sn_webhook_v1_webhooks_servicenow_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-aiops-signature",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiops-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOutcome"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sn Webhook"
+      }
+    }
+  }
+}

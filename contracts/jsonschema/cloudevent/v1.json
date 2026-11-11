@@ -1,0 +1,68 @@
+{
+  "$id": "https://schemas.aiops.local/cloudevent/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "data": {
+      "type": "object"
+    },
+    "datacontenttype": {
+      "const": "application/json"
+    },
+    "dataschema": {
+      "format": "uri",
+      "type": "string"
+    },
+    "id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "partitionkey": {
+      "pattern": "^[^:]+:.+$",
+      "type": "string"
+    },
+    "source": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "specversion": {
+      "const": "1.0"
+    },
+    "tenantid": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "time": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "traceparent": {
+      "type": "string"
+    },
+    "type": {
+      "enum": [
+        "io.aiops.changes.event.v1",
+        "io.aiops.feedback.outcome.v1",
+        "io.aiops.incident.candidate.v1",
+        "io.aiops.incident.verdict.v1",
+        "io.aiops.notification.v1",
+        "io.aiops.signal.detected.v1",
+        "io.aiops.telemetry.logs.v1",
+        "io.aiops.telemetry.metrics.v1"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "time",
+    "dataschema",
+    "tenantid",
+    "partitionkey",
+    "data"
+  ],
+  "title": "AIOps CloudEvent envelope (CloudEvents 1.0, structured JSON)",
+  "type": "object"
+}

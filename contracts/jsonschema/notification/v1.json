@@ -1,0 +1,107 @@
+{
+  "$defs": {
+    "Channel": {
+      "enum": [
+        "servicenow",
+        "keep",
+        "email",
+        "chat",
+        "log_only"
+      ],
+      "title": "Channel",
+      "type": "string"
+    },
+    "NotificationAction": {
+      "enum": [
+        "open",
+        "clear"
+      ],
+      "title": "NotificationAction",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.aiops.local/notification/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "notifications.outbox payload: one delivery recorded by the router.",
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/NotificationAction"
+    },
+    "channel": {
+      "$ref": "#/$defs/Channel"
+    },
+    "ci_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Ci Id",
+      "type": "string"
+    },
+    "external_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "External Ref"
+    },
+    "incident_key": {
+      "title": "Incident Key",
+      "type": "string"
+    },
+    "notification_id": {
+      "title": "Notification Id",
+      "type": "string"
+    },
+    "priority": {
+      "default": 3,
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "title": "Priority",
+      "type": "integer"
+    },
+    "status": {
+      "default": "pending",
+      "enum": [
+        "pending",
+        "sent",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "tenant_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    }
+  },
+  "required": [
+    "notification_id",
+    "incident_key",
+    "tenant_id",
+    "ci_id",
+    "channel",
+    "action"
+  ],
+  "title": "Notification",
+  "type": "object",
+  "x-cloudevents-type": "io.aiops.notification.v1",
+  "x-topic": "notifications.outbox"
+}
