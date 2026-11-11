@@ -1,0 +1,11 @@
+# Allow-listed remediation: rolling restart of one systemd service on the target CI.
+- name: Restart service
+  hosts: "{{ ci_id }}"
+  become: true
+  gather_facts: false
+  serial: 1
+  tasks:
+    - name: Restart
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+        state: restarted

@@ -1,0 +1,19 @@
+# Allow-listed remediation: remove temp files older than N days on the target CI.
+- name: Clean temporary files
+  hosts: "{{ ci_id }}"
+  become: true
+  gather_facts: false
+  vars:
+    max_age_days: 1
+  tasks:
+    - name: Find old files in /tmp and app temp dir
+      ansible.builtin.find:
+        paths: ["/tmp", "/var/tmp"]
+        age: "{{ max_age_days }}d"
+        recurse: true
+      register: old
+    - name: Remove them
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old.files }}"
