@@ -17,6 +17,22 @@
   },
   "panels": [
     {
+      "id": 99,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "html",
+        "content": "<div style=\"display:flex;align-items:center;gap:18px;height:100%\"><img src=\"public/img/cassava/cassava-logo-white.png\" alt=\"Cassava Technologies\" height=\"30\"><div style=\"border-left:1px solid #3a4a72;padding-left:18px\"><div style=\"font:700 18px Montserrat,Arial,sans-serif;color:#fff\">Prediction quality (KPIs)</div><div style=\"font:13px Arial,sans-serif;color:#C9D2E3\">Were warnings real, were failures caught, and how much notice did teams get</div></div></div>"
+      }
+    },
+    {
       "id": 1,
       "title": "Precision by failure type",
       "type": "timeseries",
@@ -26,15 +42,40 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 3,
         "w": 12,
         "h": 8
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit"
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never"
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#00F19C"
+                }
+              }
+            ]
+          }
+        ]
       },
       "targets": [
         {
@@ -58,15 +99,40 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 0,
+        "y": 3,
         "w": 12,
         "h": 8
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit"
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never"
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#00F19C"
+                }
+              }
+            ]
+          }
+        ]
       },
       "targets": [
         {
@@ -90,15 +156,40 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 11,
         "w": 12,
         "h": 8
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never"
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#00F19C"
+                }
+              }
+            ]
+          }
+        ]
       },
       "targets": [
         {
@@ -122,15 +213,34 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 8,
+        "y": 11,
         "w": 12,
         "h": 8
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#00F19C"
+                }
+              }
+            ]
+          }
+        ]
       },
       "targets": [
         {

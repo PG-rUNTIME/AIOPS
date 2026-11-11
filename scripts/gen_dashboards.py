@@ -8,6 +8,8 @@ from typing import Any
 
 OUT = Path(__file__).resolve().parents[1] / "config" / "grafana" / "dashboards"
 VM = {"type": "prometheus", "uid": "vm"}
+# Cassava series palette (brand/tokens.json "chartSeries"), readable on Grafana's dark theme
+SERIES = ["#00F19C", "#5B8DEF", "#C9D2E3", "#00B377", "#F5B841", "#FF7A85"]
 LOKI = {"type": "loki", "uid": "loki"}
 
 
@@ -23,13 +25,30 @@ def panel(
     unit: str = "short",
     ds: dict[str, str] = VM,
 ) -> dict[str, Any]:
+    overrides = [
+        {
+            "matcher": {"id": "byFrameRefID", "options": chr(65 + i)},
+            "properties": [
+                {"id": "color", "value": {"mode": "fixed", "fixedColor": SERIES[i % len(SERIES)]}}
+            ],
+        }
+        for i in range(len(exprs))
+    ]
+    defaults: dict[str, Any] = {"unit": unit, "color": {"mode": "palette-classic"}}
+    if kind == "timeseries":
+        defaults["custom"] = {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+        }
     return {
         "id": pid,
         "title": title,
         "type": kind,
         "datasource": ds,
-        "gridPos": {"x": x, "y": y, "w": w, "h": h},
-        "fieldConfig": {"defaults": {"unit": unit}, "overrides": []},
+        "gridPos": {"x": x, "y": y + 3, "w": w, "h": h},
+        "fieldConfig": {"defaults": defaults, "overrides": overrides},
         "targets": [
             {"refId": chr(65 + i), "expr": e, "legendFormat": lg, "datasource": ds}
             for i, (e, lg) in enumerate(exprs)
@@ -37,9 +56,29 @@ def panel(
     }
 
 
+def header(title: str, subtitle: str) -> dict[str, Any]:
+    """Branded header: Cassava logo (served from public/img/cassava) + dashboard purpose."""
+    logo = '<img src="public/img/cassava/cassava-logo-white.png" alt="Cassava Technologies" height="30">'
+    html = (
+        '<div style="display:flex;align-items:center;gap:18px;height:100%">'
+        f'{logo}<div style="border-left:1px solid #3a4a72;padding-left:18px">'
+        f'<div style="font:700 18px Montserrat,Arial,sans-serif;color:#fff">{title}</div>'
+        f'<div style="font:13px Arial,sans-serif;color:#C9D2E3">{subtitle}</div></div></div>'
+    )
+    return {
+        "id": 99,
+        "type": "text",
+        "title": "",
+        "transparent": True,
+        "gridPos": {"x": 0, "y": 0, "w": 24, "h": 3},
+        "options": {"mode": "html", "content": html},
+    }
+
+
 def dash(
     uid: str, title: str, panels: list[dict[str, Any]], variables: list[dict[str, Any]]
 ) -> dict[str, Any]:
+    panels = [header(title.split(" / ", 1)[-1], SUBTITLES[uid]), *panels]
     return {
         "uid": uid,
         "title": title,
@@ -65,6 +104,11 @@ def var(name: str, query: str) -> dict[str, Any]:
     }
 
 
+SUBTITLES = {
+    "aiops-ci-overview": "One configuration item: observed values, 15-minute predictions and logs",
+    "aiops-platform": "Health of the AIOps services themselves (rate, errors, duration)",
+    "aiops-kpis": "Were warnings real, were failures caught, and how much notice did teams get",
+}
 CI = 'ci_id="$ci_id"'
 ci_overview = dash(
     "aiops-ci-overview",
