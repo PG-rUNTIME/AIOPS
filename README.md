@@ -1,4 +1,31 @@
-# Predictive AIOps platform
+<!-- Replace your-org/aiops-platform with the real GitHub slug once the repo is pushed. -->
+<h1 align="center">Predictive AIOps platform</h1>
+
+<p align="center">
+  <a href="https://github.com/your-org/aiops-platform/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/your-org/aiops-platform/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="tests" src="https://img.shields.io/badge/tests-107%20passing-brightgreen">
+  <img alt="coverage" src="https://img.shields.io/badge/coverage-92%25-brightgreen">
+  <img alt="LLM evals" src="https://img.shields.io/badge/LLM%20evals-10%2F10-8a2be2">
+  <img alt="mypy" src="https://img.shields.io/badge/mypy-strict-1f5082">
+  <a href="https://github.com/astral-sh/ruff"><img alt="ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
+  <a href="https://github.com/astral-sh/uv"><img alt="uv" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json"></a>
+</p>
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white">
+  <img alt="Kafka" src="https://img.shields.io/badge/Apache%20Kafka-KRaft-231F20?logo=apachekafka&logoColor=white">
+  <img alt="OpenTelemetry" src="https://img.shields.io/badge/OpenTelemetry-OTLP-425CC7?logo=opentelemetry&logoColor=white">
+  <img alt="CloudEvents" src="https://img.shields.io/badge/CloudEvents-1.0-0d6efd">
+  <img alt="AsyncAPI" src="https://img.shields.io/badge/AsyncAPI-3.0-6c3fc8">
+  <img alt="Docker" src="https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white">
+  <img alt="Helm" src="https://img.shields.io/badge/helm-charts-0F1689?logo=helm&logoColor=white">
+  <a href="https://www.conventionalcommits.org"><img alt="Conventional Commits" src="https://img.shields.io/badge/Conventional%20Commits-1.0.0-FE5196?logo=conventionalcommits&logoColor=white"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
+</p>
+
+<p align="center">
+  <img src="docs/media/demo.gif" alt="A real disk-fill run: the anomaly detector fires at 0:45, a verified ServiceNow ticket opens at 2:45, the trend detector predicts 'full in 14.7 min' at 9:45 and updates the same ticket, and the disk fills at 20:00 — 17 minutes after the ticket." width="880">
+  <br><sub>A real disk-fill run through the pipeline (<code>make demo-media</code> regenerates it) · <a href="docs/media/demo.mp4">MP4 version</a></sub>
+</p>
 
 Collects metrics, logs and traces; **predicts failures 5–15 minutes ahead**; investigates
 candidates with an LLM agent; opens a ServiceNow ticket (or Teams/Slack/e-mail) with root cause,

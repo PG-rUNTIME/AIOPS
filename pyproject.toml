@@ -56,7 +56,7 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query"]
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S", "PT011", "PT018", "E501"]
 "evals/**" = ["S", "ASYNC240"]
-"scripts/**" = ["E501", "T201"]
+"scripts/**" = ["E501", "T201", "S603", "S607"]
 "tests/**" = ["S", "PT018", "E501"]
 
 [tool.mypy]

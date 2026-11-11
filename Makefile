@@ -6,7 +6,7 @@ VERSION ?= $(shell git describe --tags --always 2>/dev/null || echo 0.1.0)
 REGISTRY ?= ghcr.io/your-org/aiops
 
 .PHONY: help up down logs ps profiles test test-unit test-e2e test-integration evals lint fmt typecheck \
-        contracts contracts-check dashboards build token demo-disk-fill demo-memory-leak sim-stop clean
+        contracts contracts-check dashboards build token demo-disk-fill demo-memory-leak demo-media sim-stop clean
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-18s %s\n",$$1,$$2}'
@@ -82,6 +82,10 @@ demo-disk-fill: ## Inject a disk-fill on CI-CORE-DB-01 (fails in 20 min)
 
 demo-memory-leak:
 	curl -s -X POST 'http://localhost:8090/scenarios/memory_leak?ci_id=CI-MOBILE-GW-01&fail_in_minutes=20'; echo
+
+demo-media: ## Regenerate docs/media/demo.{gif,mp4} from a real in-process pipeline run
+	PYTHONPATH=. uv run python scripts/media/capture_timeline.py
+	uv run python scripts/media/render_demo.py
 
 sim-stop:
 	curl -s -X DELETE http://localhost:8090/scenarios; echo
