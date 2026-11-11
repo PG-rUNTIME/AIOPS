@@ -1,0 +1,17 @@
+[project]
+name = "chaos-sim"
+version = "0.1.0"
+description = "Dev-only failure simulator"
+requires-python = ">=3.12,<3.13"
+license = { text = "Apache-2.0" }
+dependencies = ["aiops-common"]
+
+[project.scripts]
+chaos-sim = "chaos_sim.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chaos_sim"]
