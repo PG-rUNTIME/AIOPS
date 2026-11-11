@@ -85,7 +85,7 @@ demo-memory-leak:
 
 demo-media: ## Regenerate docs/media/demo.{gif,mp4} from a real in-process pipeline run
 	PYTHONPATH=. uv run python scripts/media/capture_timeline.py
-	uv run python scripts/media/render_demo.py
+	python3 scripts/media/render_demo.py   # needs: pip install playwright && playwright install chromium; ffmpeg
 
 sim-stop:
 	curl -s -X DELETE http://localhost:8090/scenarios; echo

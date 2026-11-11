@@ -37,7 +37,8 @@ This document describes what is in the repository today. The design rationale li
        ServiceNow / chat / e-mail
 ```
 
-`control-plane-api` holds tenants, CIs, routing rules, thresholds (and tuning proposals from
+`control-plane-api` also serves the operator console (`ui/console`, `/console`) and proxies the
+feedback service's incident and KPI views to it with RBAC. It holds tenants, CIs, routing rules, thresholds (and tuning proposals from
 `feedback_service.tuning`), model config and the approval-gated remediation flow with audit log.
 
 ## Services

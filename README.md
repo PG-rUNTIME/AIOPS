@@ -1,30 +1,38 @@
 <!-- Replace your-org/aiops-platform with the real GitHub slug once the repo is pushed. -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/logo/cassava-logo-white.png">
+    <img src="brand/logo/cassava-logo-navy.png" alt="Cassava Technologies" width="300">
+  </picture>
+</p>
+
 <h1 align="center">Predictive AIOps platform</h1>
+<p align="center">Predict infrastructure and application failures 5–15 minutes ahead, explain them with evidence, and open the ticket before anyone is paged.</p>
 
 <p align="center">
-  <a href="https://github.com/your-org/aiops-platform/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/your-org/aiops-platform/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="tests" src="https://img.shields.io/badge/tests-107%20passing-brightgreen">
-  <img alt="coverage" src="https://img.shields.io/badge/coverage-92%25-brightgreen">
-  <img alt="LLM evals" src="https://img.shields.io/badge/LLM%20evals-10%2F10-8a2be2">
-  <img alt="mypy" src="https://img.shields.io/badge/mypy-strict-1f5082">
-  <a href="https://github.com/astral-sh/ruff"><img alt="ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
-  <a href="https://github.com/astral-sh/uv"><img alt="uv" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json"></a>
+  <a href="https://github.com/your-org/aiops-platform/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/your-org/aiops-platform/ci.yml?branch=main&style=flat-square&labelColor=001C57&label=CI"></a>
+  <img alt="tests" src="https://img.shields.io/badge/tests-108%20passing-00B377?style=flat-square&labelColor=001C57">
+  <img alt="coverage" src="https://img.shields.io/badge/coverage-92%25-00B377?style=flat-square&labelColor=001C57">
+  <img alt="LLM evals" src="https://img.shields.io/badge/LLM%20evals-10%2F10-00B377?style=flat-square&labelColor=001C57">
+  <img alt="mypy" src="https://img.shields.io/badge/mypy-strict-0B3A8C?style=flat-square&labelColor=001C57">
+  <img alt="ruff" src="https://img.shields.io/badge/lint-ruff-0B3A8C?style=flat-square&labelColor=001C57">
+  <img alt="uv" src="https://img.shields.io/badge/deps-uv%20locked-0B3A8C?style=flat-square&labelColor=001C57">
 </p>
 <p align="center">
-  <img alt="Python" src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white">
-  <img alt="Kafka" src="https://img.shields.io/badge/Apache%20Kafka-KRaft-231F20?logo=apachekafka&logoColor=white">
-  <img alt="OpenTelemetry" src="https://img.shields.io/badge/OpenTelemetry-OTLP-425CC7?logo=opentelemetry&logoColor=white">
-  <img alt="CloudEvents" src="https://img.shields.io/badge/CloudEvents-1.0-0d6efd">
-  <img alt="AsyncAPI" src="https://img.shields.io/badge/AsyncAPI-3.0-6c3fc8">
-  <img alt="Docker" src="https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white">
-  <img alt="Helm" src="https://img.shields.io/badge/helm-charts-0F1689?logo=helm&logoColor=white">
-  <a href="https://www.conventionalcommits.org"><img alt="Conventional Commits" src="https://img.shields.io/badge/Conventional%20Commits-1.0.0-FE5196?logo=conventionalcommits&logoColor=white"></a>
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.12-5B6478?style=flat-square&labelColor=001C57&logo=python&logoColor=white">
+  <img alt="Kafka" src="https://img.shields.io/badge/Kafka-KRaft-5B6478?style=flat-square&labelColor=001C57&logo=apachekafka&logoColor=white">
+  <img alt="OpenTelemetry" src="https://img.shields.io/badge/OpenTelemetry-OTLP-5B6478?style=flat-square&labelColor=001C57&logo=opentelemetry&logoColor=white">
+  <img alt="CloudEvents" src="https://img.shields.io/badge/CloudEvents-1.0-5B6478?style=flat-square&labelColor=001C57">
+  <img alt="AsyncAPI" src="https://img.shields.io/badge/AsyncAPI-3.0-5B6478?style=flat-square&labelColor=001C57">
+  <img alt="Docker" src="https://img.shields.io/badge/docker-compose-5B6478?style=flat-square&labelColor=001C57&logo=docker&logoColor=white">
+  <img alt="Helm" src="https://img.shields.io/badge/helm-charts-5B6478?style=flat-square&labelColor=001C57&logo=helm&logoColor=white">
+  <a href="https://www.conventionalcommits.org"><img alt="Conventional Commits" src="https://img.shields.io/badge/commits-conventional-5B6478?style=flat-square&labelColor=001C57"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-5B6478?style=flat-square&labelColor=001C57"></a>
 </p>
 
 <p align="center">
-  <img src="docs/media/demo.gif" alt="A real disk-fill run: the anomaly detector fires at 0:45, a verified ServiceNow ticket opens at 2:45, the trend detector predicts 'full in 14.7 min' at 9:45 and updates the same ticket, and the disk fills at 20:00 — 17 minutes after the ticket." width="880">
-  <br><sub>A real disk-fill run through the pipeline (<code>make demo-media</code> regenerates it) · <a href="docs/media/demo.mp4">MP4 version</a></sub>
+  <img src="docs/media/demo.gif" alt="A real disk-fill run: the anomaly detector fires at 0:45, a verified ServiceNow ticket opens at 2:45, the trend detector predicts full in 14.7 minutes at 9:45 and updates the same ticket, and the disk fills at 20:00, 17 minutes after the ticket." width="880">
+  <br><sub>A real disk-fill run through the pipeline (<code>make demo-media</code> regenerates it) · <a href="docs/media/demo.mp4">MP4</a></sub>
 </p>
 
 Collects metrics, logs and traces; **predicts failures 5–15 minutes ahead**; investigates
@@ -45,6 +53,23 @@ make test                   # lint, mypy --strict, unit + e2e (coverage ≥ 80 %
 Plug in your LLM by setting `AIOPS_LLM__BASE_URL`, `AIOPS_LLM__MODEL` and `AIOPS_LLM__API_KEY`
 (any OpenAI-compatible endpoint), or `AIOPS_LLM__PROVIDER=holmes` for HolmesGPT.
 
+## Operator console
+
+Served by the control plane at **`/console`** (`http://localhost:8084/console/` in dev). Incidents are
+ordered by time left before failure; the bar runs from the first warning to the predicted failure,
+marked with the Cassava triangle. Operators label outcomes and request fixes; a second person
+approves; every action lands in the audit log. Sign-in uses OIDC (authorization code + PKCE) when
+`AIOPS_CONSOLE_OIDC_ISSUER`/`AIOPS_CONSOLE_OIDC_CLIENT_ID` are set, or a pasted token in dev (`make token`).
+
+<p align="center"><img src="docs/media/console-incidents.png" alt="Incidents view: four open predictions sorted by time left, with runway bars and AI-verified, unverified and needs-review states" width="880"></p>
+
+| Incident detail | Fix approvals | Prediction quality |
+|---|---|---|
+| <img src="docs/media/console-incident-detail.png" alt="Incident drawer with root cause, recommended fix, runbook, outcome labelling and fix request" width="290"> | <img src="docs/media/console-approvals.png" alt="Fix approvals with four-eyes approve, reject and run actions" width="290"> | <img src="docs/media/console-quality.png" alt="Precision, recall and median warning time per failure type against targets" width="290"> |
+
+Brand: Cassava theme colours and fonts (Montserrat, Arial) from [`brand/`](brand/README.md), shared by the
+console, Grafana dashboards and the demo media.
+
 ## Layout
 
 | Path | What |
@@ -56,7 +81,8 @@ Plug in your LLM by setting `AIOPS_LLM__BASE_URL`, `AIOPS_LLM__MODEL` and `AIOPS
 | `deploy/compose` · `deploy/docker` · `deploy/helm` · `deploy/argocd` | dev stack · image · charts · GitOps |
 | `evals/` | recorded incidents + harness (replay in CI, live with your LLM) |
 | `tests/e2e` · `tests/integration` | in-process chaos → ticket pipeline · Testcontainers Kafka/Postgres |
-| `docs/` | `architecture.md`, `adr/`, `runbooks/`, `demos/` |
+| `docs/` | `architecture.md`, `adr/`, `runbooks/`, `demos/`, `media/` |
+| `ui/console` · `brand/` | operator console (static, served by control-plane-api) · Cassava brand kit |
 
 ## Milestone status
 

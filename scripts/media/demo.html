@@ -1,53 +1,67 @@
-<!doctype html><html><head><meta charset="utf-8"><style>
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../brand/tokens.css">
+<style>
 *{box-sizing:border-box;margin:0}
-body{width:1280px;height:720px;background:#0b1020;color:#e6e9f2;font-family:Inter,"Segoe UI",Helvetica,Arial,sans-serif;overflow:hidden}
-.top{display:flex;justify-content:space-between;align-items:center;padding:22px 40px 6px}
-h1{font-size:26px;font-weight:700;letter-spacing:-.3px}
-h1 span{color:#7c8db5;font-weight:500}
-.clock{font:600 22px ui-monospace,Menlo,monospace;color:#9fb1d9;background:#141b33;padding:8px 14px;border-radius:8px;border:1px solid #243055}
-.wrap{display:grid;grid-template-columns:720px 1fr;gap:28px;padding:10px 40px}
-.card{background:#111831;border:1px solid #1f2a4a;border-radius:14px;padding:18px 20px}
-.lab{font-size:13px;color:#7c8db5;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
-.stages{display:flex;gap:8px;margin-top:14px}
-.st{flex:1;text-align:center;padding:12px 4px;border-radius:10px;background:#111831;border:1px solid #1f2a4a;color:#5d6b8f;font-size:14px;font-weight:600;transition:none}
-.st.on{background:#13284a;border-color:#3b82f6;color:#dbe7ff;box-shadow:0 0 18px rgba(59,130,246,.35)}
-.st small{display:block;font-weight:400;font-size:11px;margin-top:3px;opacity:.8}
-.log{display:flex;flex-direction:column;justify-content:flex-end;gap:8px;height:548px;overflow:hidden}
-.ev{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-radius:10px;background:#0e1530;border-left:3px solid #3b82f6;font-size:14.5px;line-height:1.35}
-.ev .t{font:600 13px ui-monospace,Menlo,monospace;color:#7c8db5;min-width:48px;padding-top:2px}
-.ev.warn{border-color:#f59e0b}.ev.ok{border-color:#22c55e}.ev.bad{border-color:#ef4444}.ev.ai{border-color:#a855f7}
-.ev b{color:#fff}
-.tk{font:12px ui-monospace,Menlo,monospace;color:#9fb1d9;margin-top:4px}
-#end{position:absolute;inset:0;background:rgba(8,12,26,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;opacity:0}
-#end .big{font-size:46px;font-weight:800;letter-spacing:-1px}
-#end .row{display:flex;gap:26px}
-#end .k{background:#111831;border:1px solid #243055;border-radius:14px;padding:18px 26px;text-align:center;min-width:200px}
-#end .k div:first-child{font-size:36px;font-weight:800;color:#60a5fa}
-#end .k div:last-child{font-size:14px;color:#9fb1d9;margin-top:4px}
-#end .sub{color:#7c8db5;font-size:16px}
+body{width:1280px;height:720px;background:var(--cassava-navy);color:#fff;font-family:var(--font-body);overflow:hidden;position:relative}
+.top{display:flex;justify-content:space-between;align-items:flex-start;padding:30px 44px 0}
+.kicker{font:700 13px var(--font-display);letter-spacing:2.4px;color:var(--cassava-mint);text-transform:uppercase}
+h1{font:700 28px/1.2 var(--font-display);letter-spacing:-.3px;margin-top:8px}
+.logo{height:40px;margin-top:2px}
+.wrap{display:grid;grid-template-columns:720px 1fr;gap:24px;padding:22px 44px 0}
+.card{background:var(--cassava-blue);border-radius:6px;padding:16px 18px}
+.lab{font:600 13px var(--font-display);color:var(--cassava-mist);margin-bottom:6px;display:flex;justify-content:space-between}
+.clock{font:700 13px var(--font-display);color:var(--cassava-mint);font-variant-numeric:tabular-nums}
+.stages{display:flex;gap:8px;margin-top:12px}
+.st{flex:1;text-align:center;padding:10px 4px;border-radius:6px;background:rgba(11,58,140,.45);color:#8FA2C9;font:700 14px var(--font-display);border:1px solid transparent}
+.st.on{background:var(--cassava-blue);border-color:var(--cassava-mint);color:#fff}
+.st small{display:block;font:400 11px var(--font-body);margin-top:3px;color:var(--cassava-mist)}
+.log{display:flex;flex-direction:column;justify-content:flex-end;gap:7px;height:486px;overflow:hidden}
+.ev{display:flex;gap:12px;align-items:flex-start;padding:9px 12px;border-radius:5px;background:rgba(0,28,87,.55);border-left:3px solid var(--cassava-mist);font-size:14.5px;line-height:1.38;color:#E3E9F5}
+.ev .t{font:700 13px var(--font-display);color:var(--cassava-mist);min-width:44px;padding-top:1px;font-variant-numeric:tabular-nums}
+.ev.ok{border-color:var(--cassava-mint)}.ev.warn{border-color:#F5B841}.ev.bad{border-color:#FF7A85}.ev.ai{border-color:#7FA6FF}
+.ev b{color:#fff;font-weight:700}
+.foot{position:absolute;left:44px;bottom:16px;font-size:12px;color:#8FA2C9}
+.tri{position:absolute;clip-path:polygon(0 0,100% 0,50% 100%)}
+#end{position:absolute;inset:0;background:var(--cassava-navy);display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:26px;padding:0 96px;opacity:0}
+#end .kicker{font-size:15px}
+#end .big{font:800 46px/1.15 var(--font-display);letter-spacing:-1px;max-width:900px}
+#end .row{display:flex;gap:18px}
+#end .k{background:var(--cassava-blue);border-radius:6px;padding:20px 24px;width:250px}
+#end .k div:first-child{font:700 44px var(--font-display);color:var(--cassava-mint);font-variant-numeric:tabular-nums}
+#end .k div:last-child{font-size:15px;color:#E3E9F5;margin-top:6px}
+#end .sub{color:var(--cassava-mist);font-size:16px}
+#end .logo{position:absolute;top:34px;right:44px}
 </style></head><body>
-<div class="top"><h1>Predictive AIOps <span>· disk filling on CI-CORE-DB-01 (core banking DB)</span></h1><div class="clock" id="clock">T+00:00</div></div>
+<div class="top"><div><div class="kicker">Predictive AIOps · live pipeline run</div><h1>Disk filling on the core banking database (CI-CORE-DB-01)</h1></div>
+<img class="logo" src="../../brand/logo/cassava-logo-white.png" alt="Cassava Technologies"></div>
 <div class="wrap">
  <div>
-  <div class="card"><div class="lab">Disk used — observed vs predicted</div><svg id="chart" width="680" height="420"></svg></div>
+  <div class="card"><div class="lab"><span>Disk used, observed and predicted</span><span class="clock" id="clock">T+00:00</span></div><svg id="chart" width="684" height="356"></svg></div>
   <div class="stages" id="stages">
    <div class="st" id="s0">Collect<small>Alloy · OTel</small></div>
    <div class="st" id="s1">Detect<small>trend · forecast · anomaly</small></div>
-   <div class="st" id="s2">Correlate<small>1 episode / CI</small></div>
+   <div class="st" id="s2">Correlate<small>one episode per CI</small></div>
    <div class="st" id="s3">Investigate<small>LLM + evidence check</small></div>
    <div class="st" id="s4">Ticket<small>ServiceNow</small></div>
   </div>
  </div>
- <div class="card"><div class="lab">Event timeline (real pipeline run)</div><div class="log" id="log"></div></div>
+ <div class="card"><div class="lab"><span>What the platform did</span></div><div class="log" id="log"></div></div>
 </div>
-<div id="end"><div class="big">Ticket opened 17 minutes before the disk filled</div>
- <div class="row"><div class="k"><div>17 min</div><div>warning before failure</div></div>
- <div class="k"><div>24 → 1</div><div>signals → tickets</div></div>
+<div class="foot">Recorded from the in-process pipeline (make demo-media). Times are minutes after the fault began.</div>
+<div id="end">
+ <img class="logo" src="../../brand/logo/cassava-logo-white.png" alt="Cassava Technologies">
+ <div class="kicker">Result</div>
+ <div class="big">The ticket opened 17 minutes before the disk filled.</div>
+ <div class="row"><div class="k"><div>17 min</div><div>of warning before failure</div></div>
+ <div class="k"><div>24 → 1</div><div>signals became one ticket</div></div>
  <div class="k"><div>0</div><div>duplicate tickets</div></div></div>
- <div class="sub">Detectors watch everything · the LLM investigates only candidates · every claim needs evidence</div></div>
+ <div class="sub">Detectors watch everything. The LLM investigates only candidates, and every claim needs evidence.</div>
+ <div class="tri" style="right:150px;bottom:70px;width:150px;height:130px;background:#0D6E6E"></div>
+ <div class="tri" style="right:290px;bottom:110px;width:66px;height:58px;background:var(--cassava-mint)"></div>
+</div>
 <script>
 const D = __DATA__;
-const W=680,H=420,PL=48,PR=14,PT=12,PB=34, X0=-3, X1=24;
+const W=684,H=356,PL=46,PR=16,PT=14,PB=30, X0=-3, X1=24;
 const xs=m=>PL+(m-X0)/(X1-X0)*(W-PL-PR), ys=v=>PT+(1-(v-0.4)/0.62)*(H-PT-PB);
 const svg=document.getElementById('chart');
 const EVENTS=[
@@ -66,26 +80,26 @@ function mmss(m){const s=Math.max(0,Math.round(m*60));return `T+${String(Math.fl
 function el(n,a,txt){const e=document.createElementNS('http://www.w3.org/2000/svg',n);for(const k in a)e.setAttribute(k,a[k]);if(txt)e.textContent=txt;svg.appendChild(e);return e}
 window.render=function(m,endA){
  svg.innerHTML='';
- for(const v of [0.4,0.6,0.8,1.0]){el('line',{x1:PL,x2:W-PR,y1:ys(v),y2:ys(v),stroke:'#1f2a4a'});el('text',{x:PL-8,y:ys(v)+4,fill:'#5d6b8f','font-size':12,'text-anchor':'end'},Math.round(v*100)+'%')}
- for(const t of [0,5,10,15,20]){el('text',{x:xs(t),y:H-12,fill:'#5d6b8f','font-size':12,'text-anchor':'middle'},'T+'+t+'m')}
- el('line',{x1:PL,x2:W-PR,y1:ys(0.98),y2:ys(0.98),stroke:'#ef4444','stroke-dasharray':'5 5','stroke-width':1.5});
- el('text',{x:xs(-2.6),y:ys(0.98)-6,fill:'#f87171','font-size':12},'threshold 98%');
- el('line',{x1:xs(20),x2:xs(20),y1:PT,y2:H-PB,stroke:'#ef4444','stroke-opacity':.35});
+ for(const v of [0.4,0.6,0.8,1.0]){el('line',{x1:PL,x2:W-PR,y1:ys(v),y2:ys(v),stroke:'rgba(201,210,227,.16)'});el('text',{x:PL-8,y:ys(v)+4,fill:'#8FA2C9','font-size':12,'font-family':'Montserrat','text-anchor':'end'},Math.round(v*100)+'%')}
+ for(const t of [0,5,10,15,20]){el('text',{x:xs(t),y:H-10,fill:'#8FA2C9','font-size':12,'font-family':'Montserrat','text-anchor':'middle'},'T+'+t+'m')}
+ el('line',{x1:PL,x2:W-PR,y1:ys(0.98),y2:ys(0.98),stroke:'#FF7A85','stroke-dasharray':'5 5','stroke-width':1.5});
+ el('text',{x:xs(-2.6),y:ys(0.98)-6,fill:'#FF9AA2','font-size':12,'font-family':'Montserrat'},'threshold 98%');
+ el('line',{x1:xs(20),x2:xs(20),y1:PT,y2:H-PB,stroke:'#FF7A85','stroke-opacity':.35});
  const pts=D.series.filter(p=>p[0]>=X0 && p[0]<=m).map(p=>xs(p[0]).toFixed(1)+','+ys(p[1]).toFixed(1));
  if(pts.length>1){
-   el('polygon',{points:pts.join(' ')+` ${xs(Math.min(m,D.series.at(-1)[0])).toFixed(1)},${ys(0.4)} ${xs(X0)},${ys(0.4)}`,fill:'rgba(96,165,250,.12)'});
-   el('polyline',{points:pts.join(' '),fill:'none',stroke:'#60a5fa','stroke-width':2.5});
+   el('polygon',{points:pts.join(' ')+` ${xs(Math.min(m,D.series.at(-1)[0])).toFixed(1)},${ys(0.4)} ${xs(X0)},${ys(0.4)}`,fill:'rgba(0,241,156,.10)'});
+   el('polyline',{points:pts.join(' '),fill:'none',stroke:'#00F19C','stroke-width':2.5});
  }
  if(m>=9.75){ // prediction from trend at 9.75 with ETA 14.65
    const p=D.series.reduce((a,b)=>Math.abs(b[0]-9.75)<Math.abs(a[0]-9.75)?b:a);
    const k=Math.min(1,(m-9.75)/1.2), xe=9.75+14.65*k, ye=p[1]+(0.98-p[1])*k;
-   el('line',{x1:xs(p[0]),y1:ys(p[1]),x2:xs(xe),y2:ys(ye),stroke:'#f59e0b','stroke-width':2.5,'stroke-dasharray':'7 5'});
-   if(k>=1){el('circle',{cx:xs(9.75+14.65),cy:ys(0.98),r:5,fill:'#f59e0b'});
-   el('text',{x:xs(12.6),y:ys(0.83)+44,fill:'#fbbf24','font-size':13},'T+9:45 trend: full in ~14.7 min')}
+   el('line',{x1:xs(p[0]),y1:ys(p[1]),x2:xs(xe),y2:ys(ye),stroke:'#C9D2E3','stroke-width':2,'stroke-dasharray':'7 5'});
+   if(k>=1){const tx=xs(9.75+14.65),ty=ys(0.98);el('polygon',{points:`${tx-9},${ty-16} ${tx+9},${ty-16} ${tx},${ty}`,fill:'#00F19C'});
+   el('text',{x:xs(12.6),y:ys(0.83)+44,fill:'#E3E9F5','font-size':13},'trend at 9:45: full in ~14.7 min')}
  }
- for(const [t,cls] of [[0.75,'#f59e0b'],[2.75,'#22c55e']]) if(m>=t){el('circle',{cx:xs(t),cy:ys(D.series.find(p=>p[0]>=t)[1]),r:5,fill:cls,stroke:'#0b1020','stroke-width':2})}
- if(m>=2.75) el('text',{x:xs(2.75)+8,y:ys(0.5)+4,fill:'#4ade80','font-size':13},'ticket INC0000001');
- if(m>=19.9) el('text',{x:xs(20)-8,y:ys(1.0)-6,fill:'#f87171','font-size':13,'text-anchor':'end'},'disk full');
+ for(const [t,cls] of [[0.75,'#F5B841'],[2.75,'#00F19C']]) if(m>=t){el('circle',{cx:xs(t),cy:ys(D.series.find(p=>p[0]>=t)[1]),r:5,fill:cls,stroke:'#0B3A8C','stroke-width':2})}
+ if(m>=2.75) el('text',{x:xs(2.75)+8,y:ys(0.5)+4,fill:'#00F19C','font-size':13,'font-weight':700,'font-family':'Montserrat'},'ticket INC0000001');
+ if(m>=19.9) el('text',{x:xs(20)-8,y:ys(1.0)-6,fill:'#FF9AA2','font-size':13,'text-anchor':'end','font-family':'Montserrat'},'disk full');
  document.getElementById('clock').textContent=mmss(m);
  const lg=document.getElementById('log');lg.innerHTML='';
  const on=new Set(['s0']);
