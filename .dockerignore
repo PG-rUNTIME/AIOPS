@@ -1,0 +1,16 @@
+# Only what the build needs; everything else stays out of the context.
+**
+!pyproject.toml
+!uv.lock
+!.python-version
+!libs/**
+!services/**
+!config/**
+**/__pycache__
+**/*.pyc
+**/tests/**
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/*.db
+**/.env*

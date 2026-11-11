@@ -1,0 +1,19 @@
+route:
+  receiver: keep
+  group_by: [alertname, ci_id]
+  group_wait: 10s
+  routes:
+    - matchers: [heartbeat="true"]
+      receiver: deadmans-switch
+      repeat_interval: 1m
+receivers:
+  - name: keep
+    webhook_configs:
+      # Keep's Prometheus/Alertmanager provider endpoint; API key via a URL-free header is not
+      # supported by Alertmanager webhooks, so Keep is configured to accept this source.
+      - url: http://keep-api:8080/alerts/event/prometheus
+        send_resolved: true
+  - name: deadmans-switch
+    webhook_configs:
+      # Point this at an EXTERNAL heartbeat monitor (outside the platform) in production.
+      - url: http://mock-servicenow:8080/healthz   # dev placeholder

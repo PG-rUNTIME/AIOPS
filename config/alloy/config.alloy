@@ -1,0 +1,81 @@
+// Grafana Alloy on hosts: infrastructure scraping (15 s for prediction-critical
+// metrics) and log tailing. Metrics go to VictoriaMetrics AND, via OTLP/JSON,
+// to the ingest-gateway so the detectors see them. Do not use Grafana Agent or
+// Promtail (end of life).
+
+prometheus.exporter.unix "host" { }
+
+discovery.relabel "host" {
+  targets = prometheus.exporter.unix.host.targets
+  rule {
+    target_label = "ci_id"
+    replacement  = sys.env("CI_ID")
+  }
+  rule {
+    target_label = "tenant_id"
+    replacement  = sys.env("TENANT_ID")
+  }
+}
+
+prometheus.scrape "host" {
+  targets         = discovery.relabel.host.output
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.vm.receiver, otelcol.receiver.prometheus.to_ingest.receiver]
+}
+
+// Dev only: simulated hosts + platform self-metrics → VictoriaMetrics only
+// (chaos-sim already pushes its series to the ingest-gateway itself).
+prometheus.scrape "platform" {
+  targets = [
+    {"__address__" = "chaos-sim:8080", "job" = "chaos-sim"},
+    {"__address__" = "ingest-gateway:8080", "job" = "aiops", "service" = "ingest-gateway"},
+    {"__address__" = "detector-workers:8080", "job" = "aiops", "service" = "detector-workers"},
+    {"__address__" = "correlator:8080", "job" = "aiops", "service" = "correlator"},
+    {"__address__" = "agent-gateway:8080", "job" = "aiops", "service" = "agent-gateway"},
+    {"__address__" = "router:8080", "job" = "aiops", "service" = "router"},
+    {"__address__" = "feedback-service:8080", "job" = "aiops", "service" = "feedback-service"},
+  ]
+  scrape_interval = "15s"
+  honor_labels    = true
+  forward_to      = [prometheus.remote_write.vm.receiver]
+}
+
+prometheus.remote_write "vm" {
+  endpoint {
+    url = "http://victoriametrics:8428/api/v1/write"
+  }
+}
+
+otelcol.receiver.prometheus "to_ingest" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.ingest.input]
+  }
+}
+
+otelcol.exporter.otlphttp "ingest" {
+  client {
+    endpoint = "http://ingest-gateway:8080"
+    encoding = "json"
+    headers  = {
+      "X-AIOps-Tenant" = sys.env("TENANT_ID"),
+      "Authorization"  = "Bearer " + sys.env("INGEST_API_KEY"),
+    }
+  }
+}
+
+// System logs → Loki (journald on real hosts; files in the dev container).
+local.file_match "syslog" {
+  path_targets = [{"__path__" = "/var/log/*.log", "ci_id" = sys.env("CI_ID")}]
+}
+
+loki.source.file "syslog" {
+  targets    = local.file_match.syslog.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url       = "http://loki:3100/loki/api/v1/push"
+    tenant_id = sys.env("TENANT_ID")
+  }
+}

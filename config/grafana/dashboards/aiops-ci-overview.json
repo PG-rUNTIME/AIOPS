@@ -1,0 +1,218 @@
+{
+  "uid": "aiops-ci-overview",
+  "title": "AIOps / CI overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "tags": [
+    "aiops"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "tenant",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "vm"
+        },
+        "query": {
+          "query": "label_values(node_cpu_utilisation, tenant_id)",
+          "refId": "tenant"
+        },
+        "refresh": 2,
+        "includeAll": false
+      },
+      {
+        "name": "ci_id",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "vm"
+        },
+        "query": {
+          "query": "label_values(node_cpu_utilisation{tenant_id=\"$tenant\"}, ci_id)",
+          "refId": "ci_id"
+        },
+        "refresh": 2,
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Disk used ratio (+15m predict_linear)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1 - node_filesystem_avail_bytes{ci_id=\"$ci_id\"} / node_filesystem_size_bytes{ci_id=\"$ci_id\"}",
+          "legendFormat": "used {{mountpoint}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "1 - aiops:disk_avail_bytes:predict_15m{ci_id=\"$ci_id\"} / node_filesystem_size_bytes{ci_id=\"$ci_id\"}",
+          "legendFormat": "predicted +15m",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Memory used ratio",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "aiops:memory_used_ratio{ci_id=\"$ci_id\"}",
+          "legendFormat": "used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "CPU utilisation",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_cpu_utilisation{ci_id=\"$ci_id\"}",
+          "legendFormat": "cpu",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "DB pool in use / max",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "db_pool_connections_in_use{ci_id=\"$ci_id\"} / db_pool_connections_max{ci_id=\"$ci_id\"}",
+          "legendFormat": "pool",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Logs",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{ci_id=\"$ci_id\"}",
+          "legendFormat": "",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ]
+    }
+  ]
+}

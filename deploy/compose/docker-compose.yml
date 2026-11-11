@@ -1,0 +1,424 @@
+# Dev stack. `make up` picks profiles; run a subset with e.g. COMPOSE_PROFILES=core.
+#   core          Kafka, Postgres+pgvector, MinIO, VictoriaMetrics, custom services, mock ServiceNow, Keep
+#   observability OTel Collector, Alloy, Loki, Tempo, Grafana, vmalert, Alertmanager, Mailpit
+#   ai            Ollama (CPU LLM)            ai-gpu  vLLM (GPU)        holmes  HolmesGPT (optional)
+#   chaos         chaos-sim failure simulator
+name: aiops
+
+x-limits: &small
+  deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
+x-svc: &svc
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  networks: [aiops]
+  restart: unless-stopped
+  env_file: [../../.env]
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/readyz',timeout=2).status==200 else 1)"]
+    interval: 10s
+    timeout: 3s
+    retries: 6
+    start_period: 20s
+x-kafka-env: &kafka-env
+  AIOPS_KAFKA__BOOTSTRAP_SERVERS: kafka:9092
+  AIOPS_LOG_LEVEL: INFO
+  AIOPS_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+x-after-kafka: &after-kafka
+  kafka-init: {condition: service_completed_successfully}
+
+services:
+  # ------------------------------------------------------------------ core data
+  kafka:
+    image: apache/kafka:3.9.0
+    profiles: [core]
+    networks: [aiops]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_HEAP_OPTS: -Xmx768m -Xms768m
+    volumes: [kafka-data:/var/lib/kafka/data]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    deploy: {resources: {limits: {cpus: "1.5", memory: 1280M}}}
+
+  kafka-init:
+    image: apache/kafka:3.9.0
+    profiles: [core]
+    networks: [aiops]
+    depends_on: {kafka: {condition: service_healthy}}
+    entrypoint: ["/bin/bash", "/scripts/kafka-topics.sh"]
+    volumes: [./kafka-topics.sh:/scripts/kafka-topics.sh:ro]
+    restart: "no"
+    <<: *small
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    profiles: [core]
+    networks: [aiops]
+    environment:
+      POSTGRES_USER: aiops
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: aiops
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiops -d aiops"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy: {resources: {limits: {cpus: "1", memory: 768M}}}
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    profiles: [core]
+    networks: [aiops]
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set in .env}
+    volumes: [minio-data:/data]
+    ports: ["127.0.0.1:9001:9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy: {resources: {limits: {cpus: "0.5", memory: 512M}}}
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.108.1
+    profiles: [core]
+    networks: [aiops]
+    command: ["-storageDataPath=/storage", "-retentionPeriod=30d", "-search.latencyOffset=0s"]
+    volumes: [vm-data:/storage]
+    ports: ["127.0.0.1:8428:8428"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8428/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy: {resources: {limits: {cpus: "1", memory: 768M}}}
+
+  # ------------------------------------------------------------------ custom services
+  ingest-gateway:
+    <<: *svc
+    profiles: [core]
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: ingest-gateway}}
+    environment:
+      <<: *kafka-env
+      AIOPS_TENANT_KEYS: ${INGEST_TENANT_KEYS}
+    ports: ["127.0.0.1:8081:8080"]
+    depends_on: *after-kafka
+    deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
+
+  detector-workers:
+    <<: *svc
+    profiles: [core]
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args: {SERVICE: detector-workers, EXTRAS: "${DETECTOR_EXTRAS:-}"}
+    environment:
+      <<: *kafka-env
+      AIOPS_FORECASTER: ${AIOPS_FORECASTER:-stat}   # chronos2 when built with DETECTOR_EXTRAS=chronos
+    depends_on: *after-kafka
+    deploy: {resources: {limits: {cpus: "1.5", memory: 1536M}}}
+
+  correlator:
+    <<: *svc
+    profiles: [core]
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: correlator}}
+    environment:
+      <<: *kafka-env
+      AIOPS_DATABASE_URL: postgresql+asyncpg://aiops:${POSTGRES_PASSWORD}@postgres:5432/correlator
+      AIOPS_GRAFANA_URL: http://localhost:3000
+    depends_on:
+      <<: *after-kafka
+      postgres: {condition: service_healthy}
+    deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
+
+  agent-gateway:
+    <<: *svc
+    profiles: [core]
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: agent-gateway}}
+    environment:
+      <<: *kafka-env
+      AIOPS_VM_URL: http://victoriametrics:8428
+      AIOPS_LOKI_URL: http://loki:3100
+      AIOPS_RUNBOOKS_DIR: /app/config/runbooks
+    depends_on: *after-kafka
+    deploy: {resources: {limits: {cpus: "0.5", memory: 384M}}}
+
+  router:
+    <<: *svc
+    profiles: [core]
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: router}}
+    environment:
+      <<: *kafka-env
+      AIOPS_DATABASE_URL: postgresql+asyncpg://aiops:${POSTGRES_PASSWORD}@postgres:5432/router
+      AIOPS_CHANNELS_FILE: /app/config/router/channels.yaml
+      AIOPS_RULES_FILE: /app/config/router/rules.yaml
+    depends_on:
+      <<: *after-kafka
+      postgres: {condition: service_healthy}
+      mock-servicenow: {condition: service_healthy}
+    deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
+
+  feedback-service:
+    <<: *svc
+    profiles: [core]
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: feedback-service}}
+    environment:
+      <<: *kafka-env
+      AIOPS_DATABASE_URL: postgresql+asyncpg://aiops:${POSTGRES_PASSWORD}@postgres:5432/feedback
+      AIOPS_WEBHOOK_SECRETS: ${FEEDBACK_WEBHOOK_SECRETS}
+    ports: ["127.0.0.1:8083:8080"]
+    depends_on:
+      <<: *after-kafka
+      postgres: {condition: service_healthy}
+    deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
+
+  control-plane-api:
+    <<: *svc
+    profiles: [core]
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: control-plane-api}}
+    environment:
+      AIOPS_DATABASE_URL: postgresql+asyncpg://aiops:${POSTGRES_PASSWORD}@postgres:5432/control_plane
+      AIOPS_PLAYBOOKS_DIR: /app/config/remediation/playbooks
+    ports: ["127.0.0.1:8084:8080"]
+    depends_on: {postgres: {condition: service_healthy}}
+    deploy: {resources: {limits: {cpus: "0.5", memory: 256M}}}
+
+  control-plane-seed:
+    # Seeds the demo tenant, CIs, thresholds and remediation policy through the API.
+    <<: [*svc, *small]
+    profiles: [core]
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: control-plane-api}}
+    restart: "no"
+    healthcheck: {disable: true}
+    entrypoint: ["/opt/venv/bin/python", "-m", "control_plane.seed"]
+    environment:
+      AIOPS_CONTROL_PLANE_URL: http://control-plane-api:8080
+    depends_on: {control-plane-api: {condition: service_healthy}}
+
+  mock-servicenow:
+    <<: [*svc, *small]
+    profiles: [core]
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: mock-servicenow}}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=2).status==200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports: ["127.0.0.1:8085:8080"]
+
+  keep-api:
+    # Pin to the exact version you validate (see ADR-0008); Keep is optional in dev.
+    image: ${KEEP_API_IMAGE:-us-central1-docker.pkg.dev/keephq/keep/keep-api:latest}
+    profiles: [keep]
+    networks: [aiops]
+    environment:
+      AUTH_TYPE: NO_AUTH
+      DATABASE_CONNECTION_STRING: sqlite:////state/db.sqlite3
+      KEEP_WORKFLOWS_DIRECTORY: /workflows
+    volumes:
+      - keep-state:/state
+      - ../../config/keep/workflows:/workflows:ro
+    ports: ["127.0.0.1:8086:8080"]
+    deploy: {resources: {limits: {cpus: "1", memory: 1G}}}
+
+  # ------------------------------------------------------------------ observability
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    profiles: [observability]
+    networks: [aiops]
+    command: ["--config=/etc/otelcol/collector.yaml"]
+    environment:
+      TENANT_ID: demo-bank
+      ENVIRONMENT: dev
+      INGEST_API_KEY: ${INGEST_API_KEY}
+    volumes:
+      - ../../config/otel-collector/collector.yaml:/etc/otelcol/collector.yaml:ro
+      - otel-queue:/var/lib/otelcol/queue
+    ports: ["127.0.0.1:4317:4317", "127.0.0.1:4318:4318"]
+    deploy: {resources: {limits: {cpus: "0.5", memory: 512M}}}
+
+  alloy:
+    image: grafana/alloy:v1.5.1
+    profiles: [observability]
+    networks: [aiops]
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+    environment:
+      TENANT_ID: demo-bank
+      CI_ID: CI-DEV-LAPTOP
+      INGEST_API_KEY: ${INGEST_API_KEY}
+    volumes: [../../config/alloy/config.alloy:/etc/alloy/config.alloy:ro]
+    deploy: {resources: {limits: {cpus: "0.5", memory: 384M}}}
+
+  loki:
+    image: grafana/loki:3.3.2
+    profiles: [observability]
+    networks: [aiops]
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ../../config/loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3100/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    deploy: {resources: {limits: {cpus: "1", memory: 512M}}}
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    profiles: [observability]
+    networks: [aiops]
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ../../config/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    deploy: {resources: {limits: {cpus: "0.5", memory: 512M}}}
+
+  vmalert:
+    image: victoriametrics/vmalert:v1.108.1
+    profiles: [observability]
+    networks: [aiops]
+    command:
+      - -rule=/etc/vmalert/rules.yml
+      - -datasource.url=http://victoriametrics:8428
+      - -remoteWrite.url=http://victoriametrics:8428
+      - -remoteRead.url=http://victoriametrics:8428
+      - -notifier.url=http://alertmanager:9093
+      - -evaluationInterval=15s
+    volumes: [../../config/vmalert/rules.yml:/etc/vmalert/rules.yml:ro]
+    ports: ["127.0.0.1:8880:8880"]
+    depends_on: {victoriametrics: {condition: service_healthy}}
+    <<: *small
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    profiles: [observability]
+    networks: [aiops]
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes: [../../config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro]
+    ports: ["127.0.0.1:9093:9093"]
+    <<: *small
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    profiles: [observability]
+    networks: [aiops]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set in .env}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ../../config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports: ["127.0.0.1:3000:3000"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy: {resources: {limits: {cpus: "0.5", memory: 384M}}}
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    profiles: [observability]
+    networks: [aiops]
+    ports: ["127.0.0.1:8025:8025"]
+    <<: *small
+
+  # ------------------------------------------------------------------ AI
+  ollama:
+    image: ollama/ollama:0.5.4
+    profiles: [ai]
+    networks: [aiops]
+    volumes: [ollama-models:/root/.ollama]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy: {resources: {limits: {cpus: "4", memory: 10G}}}
+
+  ollama-pull:
+    image: ollama/ollama:0.5.4
+    profiles: [ai]
+    networks: [aiops]
+    restart: "no"
+    depends_on: {ollama: {condition: service_healthy}}
+    environment: {OLLAMA_HOST: "ollama:11434"}
+    entrypoint: ["ollama", "pull", "${AIOPS_LLM__MODEL:-qwen3:8b}"]
+
+  vllm:
+    image: vllm/vllm-openai:v0.6.6
+    profiles: [ai-gpu]
+    networks: [aiops]
+    command: ["--model", "${VLLM_MODEL}", "--max-model-len", "32768", "--enable-auto-tool-choice",
+              "--tool-call-parser", "hermes"]
+    environment: {HUGGING_FACE_HUB_TOKEN: "${HF_TOKEN:-}"}
+    volumes: [hf-cache:/root/.cache/huggingface]
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
+
+  holmesgpt:
+    # Optional: set HOLMES_IMAGE to a HolmesGPT server image you have verified, then
+    # AIOPS_LLM__PROVIDER=holmes. Toolsets: config/holmes/toolsets.yaml.
+    image: ${HOLMES_IMAGE:-set-HOLMES_IMAGE-in-.env}
+    profiles: [holmes]
+    networks: [aiops]
+    env_file: [../../.env]
+    volumes: [../../config/holmes:/etc/holmes:ro]
+
+  # ------------------------------------------------------------------ chaos
+  chaos-sim:
+    <<: [*svc, *small]
+    profiles: [chaos]
+    build: {context: ../.., dockerfile: deploy/docker/Dockerfile, args: {SERVICE: chaos-sim}}
+    environment:
+      AIOPS_INGEST_URL: http://ingest-gateway:8080
+      AIOPS_INGEST_API_KEY: ${INGEST_API_KEY}
+      AIOPS_LOKI_URL: http://loki:3100
+    ports: ["127.0.0.1:8090:8080"]
+
+networks:
+  aiops:
+    name: aiops
+    driver: bridge
+
+volumes:
+  kafka-data:
+  pg-data:
+  minio-data:
+  vm-data:
+  loki-data:
+  tempo-data:
+  grafana-data:
+  otel-queue:
+  keep-state:
+  ollama-models:
+  hf-cache:

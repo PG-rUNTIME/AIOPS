@@ -1,0 +1,89 @@
+# Trend-extrapolation alerts (predict_linear) for disk, memory and certificates,
+# plus platform self-monitoring and the dead-man's switch.
+groups:
+  - name: aiops-recording
+    interval: 15s
+    rules:
+      - record: aiops:disk_used_ratio
+        expr: 1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes
+      - record: aiops:memory_used_ratio
+        expr: 1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes
+      - record: aiops:disk_avail_bytes:predict_15m
+        expr: predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}[10m], 900)
+      - record: aiops:mem_avail_bytes:predict_15m
+        expr: predict_linear(node_memory_MemAvailable_bytes[10m], 900)
+      - record: aiops:cert_days_left
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400
+
+  - name: aiops-predict-linear
+    interval: 15s
+    rules:
+      - alert: DiskWillFillIn15m
+        expr: aiops:disk_avail_bytes:predict_15m < 0 and aiops:disk_used_ratio > 0.5
+        for: 1m
+        labels: {severity: critical, failure_type: disk_full, source: aiops-predict-linear}
+        annotations:
+          summary: "Disk on {{ $labels.ci_id }} ({{ $labels.mountpoint }}) predicted full within 15 minutes"
+          query: 'predict_linear(node_filesystem_avail_bytes{ci_id="{{ $labels.ci_id }}"}[10m], 900)'
+      - alert: DiskWillFillIn4h
+        expr: predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}[1h], 4 * 3600) < 0 and aiops:disk_used_ratio > 0.7
+        for: 10m
+        labels: {severity: warning, failure_type: disk_full, source: aiops-predict-linear}
+        annotations:
+          summary: "Disk on {{ $labels.ci_id }} predicted full within 4 hours"
+      - alert: MemoryWillExhaustIn15m
+        expr: aiops:mem_avail_bytes:predict_15m < 0 and aiops:memory_used_ratio > 0.6
+        for: 1m
+        labels: {severity: critical, failure_type: memory_exhaustion, source: aiops-predict-linear}
+        annotations:
+          summary: "Memory on {{ $labels.ci_id }} predicted exhausted within 15 minutes"
+      - alert: CertificateExpiresIn14d
+        expr: aiops:cert_days_left < 14
+        for: 10m
+        labels: {severity: warning, failure_type: tls_certificate_expiry, source: aiops-predict-linear}
+        annotations:
+          summary: "TLS certificate for {{ $labels.instance }} expires in {{ $value | humanize }} days"
+      - alert: CertificateExpiresIn3d
+        expr: aiops:cert_days_left < 3
+        for: 5m
+        labels: {severity: critical, failure_type: tls_certificate_expiry, source: aiops-predict-linear}
+        annotations:
+          summary: "TLS certificate for {{ $labels.instance }} expires in {{ $value | humanize }} days"
+
+  - name: aiops-self-monitoring
+    interval: 30s
+    rules:
+      - alert: DeadMansSwitch
+        expr: vector(1)
+        labels: {severity: none, heartbeat: "true"}
+        annotations:
+          summary: "Heartbeat: must ALWAYS fire. Route to an external dead-man's-switch receiver."
+      - alert: AIOpsServiceDown
+        expr: up{job="aiops"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "{{ $labels.service }} is down"}
+      - alert: AIOpsDeadLettersGrowing
+        expr: sum by (service, topic) (increase(aiops_messages_total{outcome="dlq"}[10m])) > 0
+        labels: {severity: warning}
+        annotations: {summary: "{{ $labels.service }} dead-lettered messages on {{ $labels.topic }}"}
+      - alert: AIOpsOutboxBacklog
+        expr: aiops_router_outbox_pending > 50
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Ticket outbox backlog {{ $value }} — ITSM unreachable? (runbook: servicenow-down)"}
+      - alert: AIOpsVerdictLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(aiops_verdict_latency_seconds_bucket[10m]))) > 90
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "p95 candidate→verdict latency above 90 s"}
+      - alert: AIOpsDetectorLagging
+        expr: max(aiops_detector_event_lag_seconds) > 60
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "Detector workers lag {{ $value }}s behind telemetry (scale out; runbook: detector-lag)"}
+      - alert: AIOpsLLMCircuitOpen
+        expr: max(aiops_circuit_open{name="llm"}) == 1
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: "LLM circuit open — candidates are being ticketed as UNVERIFIED"}

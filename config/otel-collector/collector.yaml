@@ -1,0 +1,91 @@
+# OpenTelemetry Collector (contrib) — vendor-neutral gateway for application telemetry.
+# memory_limiter first, PII redaction before anything leaves the collector,
+# persistent sending queues (file_storage) so a backend outage does not lose data.
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  file_storage/queue:
+    directory: /var/lib/otelcol/queue
+    create_directory: true
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  resource/labels:
+    attributes:
+      - key: tenant_id
+        value: ${env:TENANT_ID}
+        action: upsert
+      - key: env
+        value: ${env:ENVIRONMENT}
+        action: upsert
+  # Same rules as aiops_common.redaction (defence in depth; the gateway re-checks with Luhn).
+  transform/redact:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - replace_pattern(body, "\\b(?:\\d[ -]?){12,18}\\d\\b", "[REDACTED:PAN]")
+          - replace_pattern(body, "(?i)\\b(acc(oun)?t|acct|a/c|nin|bvn|national[_ ]?id)(\\s*(no|number|#))?\\s*[:=#]?\\s*\\d[\\d -]{5,20}\\d", "[REDACTED:ACCOUNT]")
+          - replace_pattern(body, "\\b\\d{2}-?\\d{6,7}-?[A-Z]-?\\d{2}\\b", "[REDACTED:ZW_ID]")
+          - replace_pattern(body, "\\b[\\w.+-]+@[\\w-]+\\.[\\w.-]+\\b", "[REDACTED:EMAIL]")
+  batch:
+    send_batch_size: 2048
+    timeout: 2s
+
+exporters:
+  prometheusremotewrite/vm:
+    endpoint: http://victoriametrics:8428/api/v1/write
+    resource_to_telemetry_conversion:
+      enabled: true
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    headers:
+      X-Scope-OrgID: ${env:TENANT_ID}
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  # To Kafka via the ingest-gateway (tenant auth + enrichment + CloudEvents).
+  otlphttp/ingest:
+    endpoint: http://ingest-gateway:8080
+    encoding: json
+    compression: none
+    headers:
+      X-AIOps-Tenant: ${env:TENANT_ID}
+      Authorization: "Bearer ${env:INGEST_API_KEY}"
+    sending_queue:
+      enabled: true
+      storage: file_storage/queue
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0
+
+service:
+  extensions: [health_check, file_storage/queue]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource/labels, batch]
+      exporters: [prometheusremotewrite/vm, otlphttp/ingest]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource/labels, transform/redact, batch]
+      exporters: [otlphttp/loki, otlphttp/ingest]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource/labels, batch]
+      exporters: [otlp/tempo]
+  telemetry:
+    logs:
+      encoding: json

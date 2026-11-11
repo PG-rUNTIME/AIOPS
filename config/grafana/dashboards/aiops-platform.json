@@ -1,0 +1,333 @@
+{
+  "uid": "aiops-platform",
+  "title": "AIOps / Platform services (RED)",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "tags": [
+    "aiops"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "custom",
+        "query": "ingest-gateway,detector-workers,correlator,agent-gateway,router,feedback-service",
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Messages handled /s",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (service, outcome) (rate(aiops_messages_total{service=~\"$service\"}[1m]))",
+          "legendFormat": "{{service}} {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Handler p95 latency",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, service) (rate(aiops_handler_duration_seconds_bucket{service=~\"$service\"}[5m])))",
+          "legendFormat": "{{service}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Signals / candidates per minute",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (detector) (rate(aiops_signals_emitted_total[5m])) * 60",
+          "legendFormat": "signals {{detector}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (kind) (rate(aiops_candidates_emitted_total[5m])) * 60",
+          "legendFormat": "candidates {{kind}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(aiops_signals_suppressed_total[5m])) * 60",
+          "legendFormat": "suppressed",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Verdicts by status",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (rate(aiops_verdicts_total[5m])) * 60",
+          "legendFormat": "{{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Candidate \u2192 verdict p95",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(aiops_verdict_latency_seconds_bucket[10m])))",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Deliveries & outbox",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (channel, outcome) (rate(aiops_router_delivered_total[5m])) * 60",
+          "legendFormat": "{{channel}} {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "aiops_router_outbox_pending",
+          "legendFormat": "pending",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "LLM tokens today / in-flight",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "aiops_agent_tokens_used_today",
+          "legendFormat": "tokens {{tenant}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "aiops_agent_inflight",
+          "legendFormat": "inflight {{tenant}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Detector lag & scoring interval",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "aiops_detector_event_lag_seconds",
+          "legendFormat": "lag",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "aiops_detector_score_interval_seconds",
+          "legendFormat": "interval",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm"
+          }
+        }
+      ]
+    }
+  ]
+}
