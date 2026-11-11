@@ -1,0 +1,20 @@
+# HolmesGPT toolsets (only used with AIOPS_LLM__PROVIDER=holmes). Keys follow the
+# HolmesGPT docs for custom toolsets/config; verify against the version you deploy.
+toolsets:
+  prometheus/metrics:
+    enabled: true
+    config:
+      prometheus_url: http://victoriametrics:8428
+  grafana/loki:
+    enabled: true
+    config:
+      url: http://loki:3100
+      headers: {X-Scope-OrgID: demo-bank}
+  kubernetes/core:
+    enabled: false   # enable in-cluster with a read-only ServiceAccount
+mcp_servers:
+  grafana:
+    description: Grafana MCP server (PromQL, LogQL, dashboards) — read-only token
+    url: http://mcp-grafana:8000/sse
+custom_runbooks:
+  - /etc/holmes/runbooks.yaml

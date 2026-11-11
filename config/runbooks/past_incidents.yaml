@@ -1,0 +1,26 @@
+# Seed corpus of resolved incidents used for RAG in dev (replace with ServiceNow history).
+- ref: INC0045211
+  failure_type: connection_pool_exhaustion
+  summary: payments-api timeouts acquiring DB connections during salary-day peak
+  root_cause: HikariCP pool size 20 too small for peak; slow settlement query held connections
+  fix: raised pool to 60 and added index on settlements(txn_date)
+- ref: INC0044102
+  failure_type: disk_full
+  summary: core banking DB volume filled by WAL after archive_command failed
+  root_cause: archive destination credentials rotated; WAL not shipped for 6 hours
+  fix: restored archive credentials; WAL drained; added alert on pg_stat_archiver failures
+- ref: INC0043950
+  failure_type: memory_exhaustion
+  summary: mobile-gateway OOM kills after release 4.12
+  root_cause: response cache without eviction introduced in 4.12
+  fix: rolled back to 4.11; cache bounded in 4.12.1
+- ref: INC0042117
+  failure_type: interface_flap
+  summary: Harare WAN router Gi0/2 flapping during storms
+  root_cause: degraded optic on carrier hand-off
+  fix: optic replaced; traffic failed over to secondary carrier during the swap
+- ref: INC0041188
+  failure_type: error_spike
+  summary: settlement failures with upstream 502 from national switch
+  root_cause: national payment switch maintenance window not communicated
+  fix: retried settlements after maintenance; subscribed to switch maintenance feed
