@@ -1,0 +1,164 @@
+# Defaults for every service (see values-prod.yaml for HA overrides).
+global: {}
+ingestgateway:
+  service: ingest-gateway
+  replicas: 2
+  env:
+    AIOPS_KAFKA__BOOTSTRAP_SERVERS: aiops-kafka-bootstrap.aiops.svc:9093
+    AIOPS_KAFKA__SECURITY_PROTOCOL: SASL_SSL
+    AIOPS_KAFKA__SASL_MECHANISM: SCRAM-SHA-512
+    AIOPS_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring.svc:4318
+  secretEnvFrom:
+  - ingest-gateway-secrets
+  externalSecret:
+    enabled: true
+    data: []
+  hpa:
+    enabled: true
+detectorworkers:
+  service: detector-workers
+  replicas: 2
+  env:
+    AIOPS_KAFKA__BOOTSTRAP_SERVERS: aiops-kafka-bootstrap.aiops.svc:9093
+    AIOPS_KAFKA__SECURITY_PROTOCOL: SASL_SSL
+    AIOPS_KAFKA__SASL_MECHANISM: SCRAM-SHA-512
+    AIOPS_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring.svc:4318
+    AIOPS_FORECASTER: chronos2
+  secretEnvFrom:
+  - detector-workers-secrets
+  externalSecret:
+    enabled: true
+    data: []
+  keda:
+    enabled: true
+    consumerGroup: detector-workers
+    topic: telemetry.metrics
+    authRef: kafka-scram
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: '2'
+      memory: 2Gi
+correlator:
+  service: correlator
+  replicas: 2
+  env:
+    AIOPS_KAFKA__BOOTSTRAP_SERVERS: aiops-kafka-bootstrap.aiops.svc:9093
+    AIOPS_KAFKA__SECURITY_PROTOCOL: SASL_SSL
+    AIOPS_KAFKA__SASL_MECHANISM: SCRAM-SHA-512
+    AIOPS_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring.svc:4318
+  secretEnvFrom:
+  - correlator-secrets
+  externalSecret:
+    enabled: true
+    data:
+    - secretKey: AIOPS_DATABASE_URL
+      remoteRef:
+        key: aiops/postgres/correlator
+        property: url
+  keda:
+    enabled: true
+    consumerGroup: correlator
+    topic: signals.detected
+    authRef: kafka-scram
+agentgateway:
+  service: agent-gateway
+  replicas: 2
+  env:
+    AIOPS_KAFKA__BOOTSTRAP_SERVERS: aiops-kafka-bootstrap.aiops.svc:9093
+    AIOPS_KAFKA__SECURITY_PROTOCOL: SASL_SSL
+    AIOPS_KAFKA__SASL_MECHANISM: SCRAM-SHA-512
+    AIOPS_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring.svc:4318
+    AIOPS_LLM__PROVIDER: openai
+    AIOPS_LLM__BASE_URL: http://vllm.aiops-llm.svc:8000/v1
+    AIOPS_LLM__MODEL: Qwen/Qwen3.8-27B-FP8
+    AIOPS_VM_URL: http://vmselect.aiops.svc:8481
+    AIOPS_VM_TENANT_PATH: 'true'
+    AIOPS_LOKI_URL: http://loki-gateway.aiops.svc
+  secretEnvFrom:
+  - agent-gateway-secrets
+  externalSecret:
+    enabled: true
+    data:
+    - secretKey: AIOPS_LLM__API_KEY
+      remoteRef:
+        key: aiops/llm
+        property: api_key
+  keda:
+    enabled: true
+    consumerGroup: agent-gateway
+    topic: incidents.candidate
+    authRef: kafka-scram
+router:
+  service: router
+  replicas: 2
+  env:
+    AIOPS_KAFKA__BOOTSTRAP_SERVERS: aiops-kafka-bootstrap.aiops.svc:9093
+    AIOPS_KAFKA__SECURITY_PROTOCOL: SASL_SSL
+    AIOPS_KAFKA__SASL_MECHANISM: SCRAM-SHA-512
+    AIOPS_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring.svc:4318
+    AIOPS_CREATE_SCHEMA: 'false'
+  secretEnvFrom:
+  - router-secrets
+  externalSecret:
+    enabled: true
+    data:
+    - secretKey: SN_DEMO_PASSWORD
+      remoteRef:
+        key: aiops/servicenow/demo-bank
+        property: password
+    - secretKey: AIOPS_DATABASE_URL
+      remoteRef:
+        key: aiops/postgres/router
+        property: url
+  keda:
+    enabled: true
+    consumerGroup: router
+    topic: incidents.verdict
+    authRef: kafka-scram
+feedbackservice:
+  service: feedback-service
+  replicas: 2
+  env:
+    AIOPS_KAFKA__BOOTSTRAP_SERVERS: aiops-kafka-bootstrap.aiops.svc:9093
+    AIOPS_KAFKA__SECURITY_PROTOCOL: SASL_SSL
+    AIOPS_KAFKA__SASL_MECHANISM: SCRAM-SHA-512
+    AIOPS_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring.svc:4318
+  secretEnvFrom:
+  - feedback-service-secrets
+  externalSecret:
+    enabled: true
+    data:
+    - secretKey: AIOPS_DATABASE_URL
+      remoteRef:
+        key: aiops/postgres/feedbackservice
+        property: url
+  hpa:
+    enabled: true
+controlplaneapi:
+  service: control-plane-api
+  replicas: 2
+  env:
+    AIOPS_KAFKA__BOOTSTRAP_SERVERS: aiops-kafka-bootstrap.aiops.svc:9093
+    AIOPS_KAFKA__SECURITY_PROTOCOL: SASL_SSL
+    AIOPS_KAFKA__SASL_MECHANISM: SCRAM-SHA-512
+    AIOPS_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring.svc:4318
+    AIOPS_AUTH__MODE: oidc
+    AIOPS_AUTH__ISSUER: https://idp.example.com/realms/aiops
+    AIOPS_AUTH__JWKS_URL: https://idp.example.com/realms/aiops/protocol/openid-connect/certs
+    AIOPS_AUTH__ROLES_CLAIM: realm_access.roles
+    AIOPS_CREATE_SCHEMA: 'false'
+    AIOPS_EXECUTOR: ansible
+  secretEnvFrom:
+  - control-plane-api-secrets
+  externalSecret:
+    enabled: true
+    data:
+    - secretKey: AIOPS_DATABASE_URL
+      remoteRef:
+        key: aiops/postgres/controlplaneapi
+        property: url
+  hpa:
+    enabled: true

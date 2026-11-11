@@ -1,0 +1,45 @@
+# name of the service binary/image, e.g. router
+service: ""
+image:
+  repository: ghcr.io/your-org/aiops
+  tag: ""            # defaults to .Chart.AppVersion; prod pins digest below
+  digest: ""         # sha256:... (set by CI; preferred over tag)
+  pullPolicy: IfNotPresent
+replicas: 2
+env: {}              # plain config (non-secret) as AIOPS_* env vars
+secretEnvFrom: []    # names of Secrets (synced by External Secrets Operator from Vault)
+externalSecret:
+  enabled: false
+  secretStore: vault-backend
+  data: []           # [{secretKey: AIOPS_LLM__API_KEY, remoteRef: {key: aiops/llm, property: api_key}}]
+resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits: {cpu: "1", memory: 512Mi}
+http:
+  port: 8080
+  expose: false      # create a Service for API services
+pdb:
+  minAvailable: 1
+keda:
+  enabled: false     # Kafka consumer-lag autoscaling
+  minReplicas: 2
+  maxReplicas: 20
+  bootstrapServers: aiops-kafka-bootstrap.aiops.svc:9093
+  consumerGroup: ""
+  topic: ""
+  lagThreshold: "500"
+  authRef: ""        # TriggerAuthentication with SASL/TLS
+hpa:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  cpu: 70
+networkPolicy:
+  enabled: true
+  ingressFrom: []    # extra podSelector/namespaceSelector peers allowed to call this service
+  egressCIDRs: []    # external endpoints (ServiceNow, LLM API) — keep tight
+serviceMonitor:
+  enabled: true
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []

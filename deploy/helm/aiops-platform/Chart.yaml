@@ -1,0 +1,37 @@
+apiVersion: v2
+name: aiops-platform
+description: 'Umbrella chart: all AIOps custom services. Data stores (Strimzi Kafka,
+  VictoriaMetrics cluster, Loki simple-scalable, CloudNativePG, MinIO) are separate
+  Argo CD apps.'
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+dependencies:
+- name: aiops-service
+  alias: ingestgateway
+  version: 0.1.0
+  repository: file://../aiops-service
+- name: aiops-service
+  alias: detectorworkers
+  version: 0.1.0
+  repository: file://../aiops-service
+- name: aiops-service
+  alias: correlator
+  version: 0.1.0
+  repository: file://../aiops-service
+- name: aiops-service
+  alias: agentgateway
+  version: 0.1.0
+  repository: file://../aiops-service
+- name: aiops-service
+  alias: router
+  version: 0.1.0
+  repository: file://../aiops-service
+- name: aiops-service
+  alias: feedbackservice
+  version: 0.1.0
+  repository: file://../aiops-service
+- name: aiops-service
+  alias: controlplaneapi
+  version: 0.1.0
+  repository: file://../aiops-service

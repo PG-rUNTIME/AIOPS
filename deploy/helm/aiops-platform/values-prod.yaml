@@ -1,0 +1,41 @@
+# Production HA: ≥3 replicas, PDB minAvailable 2, spread across nodes/zones.
+ingestgateway:
+  replicas: 3
+  pdb:
+    minAvailable: 2
+detectorworkers:
+  replicas: 3
+  pdb:
+    minAvailable: 2
+  keda:
+    minReplicas: 3
+    maxReplicas: 30
+correlator:
+  replicas: 3
+  pdb:
+    minAvailable: 2
+  keda:
+    minReplicas: 3
+    maxReplicas: 30
+agentgateway:
+  replicas: 3
+  pdb:
+    minAvailable: 2
+  keda:
+    minReplicas: 3
+    maxReplicas: 30
+router:
+  replicas: 3
+  pdb:
+    minAvailable: 2
+  keda:
+    minReplicas: 3
+    maxReplicas: 30
+feedbackservice:
+  replicas: 3
+  pdb:
+    minAvailable: 2
+controlplaneapi:
+  replicas: 3
+  pdb:
+    minAvailable: 2

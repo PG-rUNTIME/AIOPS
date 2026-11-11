@@ -1,0 +1,15 @@
+# Argo CD app-of-apps. The data plane is installed from upstream charts/operators,
+# pinned by version, each its own Application so they upgrade independently.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aiops-root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/aiops-platform
+    targetRevision: main
+    path: deploy/argocd/apps
+  destination: {server: https://kubernetes.default.svc, namespace: argocd}
+  syncPolicy: {automated: {prune: true, selfHeal: true}}

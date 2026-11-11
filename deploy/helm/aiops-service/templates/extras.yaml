@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "svc.name" . }}
+  labels: {{- include "svc.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "svc.name" . }}
+  labels: {{- include "svc.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "svc.selector" . | nindent 4 }}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "svc.name" . }}
+  labels: {{- include "svc.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels: {{- include "svc.selector" . | nindent 6 }}
+{{- if .Values.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "svc.name" . }}
+  labels: {{- include "svc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "svc.selector" . | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/part-of: aiops-platform}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        {{- with .Values.networkPolicy.ingressFrom }}{{ toYaml . | nindent 8 }}{{- end }}
+      ports: [{port: 8080, protocol: TCP}]
+  egress:
+    - to: [{namespaceSelector: {}}]          # in-cluster (Kafka, Postgres, VM, Loki)
+    - to: [{namespaceSelector: {}, podSelector: {matchLabels: {k8s-app: kube-dns}}}]
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+    {{- range .Values.networkPolicy.egressCIDRs }}
+    - to: [{ipBlock: {cidr: {{ . }}}}]
+      ports: [{port: 443, protocol: TCP}]
+    {{- end }}
+{{- end }}
+{{- if .Values.keda.enabled }}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "svc.name" . }}
+  labels: {{- include "svc.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef: {name: {{ include "svc.name" . }}}
+  minReplicaCount: {{ .Values.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas }}
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: {{ .Values.keda.bootstrapServers }}
+        consumerGroup: {{ .Values.keda.consumerGroup | default (include "svc.name" .) }}
+        topic: {{ .Values.keda.topic | quote }}
+        lagThreshold: {{ .Values.keda.lagThreshold | quote }}
+      {{- with .Values.keda.authRef }}
+      authenticationRef: {name: {{ . }}}
+      {{- end }}
+{{- end }}
+{{- if .Values.hpa.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "svc.name" . }}
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: {{ include "svc.name" . }}}
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource: {name: cpu, target: {type: Utilization, averageUtilization: {{ .Values.hpa.cpu }}}}
+{{- end }}
+{{- if .Values.externalSecret.enabled }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: {{ include "svc.name" . }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef: {name: {{ .Values.externalSecret.secretStore }}, kind: ClusterSecretStore}
+  target: {name: {{ include "svc.name" . }}-secrets}
+  data: {{- toYaml .Values.externalSecret.data | nindent 4 }}
+{{- end }}
+{{- if .Values.serviceMonitor.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "svc.name" . }}
+  labels: {{- include "svc.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels: {{- include "svc.selector" . | nindent 6 }}
+  endpoints: [{port: http, path: /metrics, interval: 15s}]
+{{- end }}

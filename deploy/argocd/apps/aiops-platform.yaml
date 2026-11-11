@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aiops-platform
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "10"}
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/aiops-platform
+    targetRevision: main
+    path: deploy/helm/aiops-platform
+    helm: {valueFiles: [values.yaml, values-prod.yaml]}
+  destination: {server: https://kubernetes.default.svc, namespace: aiops}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

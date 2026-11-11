@@ -1,0 +1,6 @@
+apiVersion: v2
+name: aiops-service
+description: Generic chart for one AIOps platform service (used once per service by aiops-platform)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
