@@ -1,0 +1,28 @@
+/* Cassava Technologies brand tokens — from the "Cassava" PowerPoint theme.
+   One source for the console, demo media and docs. */
+@font-face { font-family: "Montserrat"; font-weight: 400; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-weight: 500; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-weight: 600; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-weight: 700; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat"; font-weight: 800; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-800-normal.woff2") format("woff2"); }
+
+:root {
+  /* Theme colours (clrScheme "Cassava") */
+  --cassava-navy: #001C57;        /* dk2 — brand ground, chrome */
+  --cassava-ink: #1E2A44;         /* dk1 — body text on light */
+  --cassava-mint: #00F19C;        /* accent1 — signal, on navy only */
+  --cassava-mint-deep: #00B377;   /* accent6 — mint for text/fills on light */
+  --cassava-mint-wash: #E6FBF3;   /* accent5 — success wash */
+  --cassava-blue: #0B3A8C;        /* accent2 — primary actions, cards on navy */
+  --cassava-link: #1F4FBF;        /* hlink */
+  --cassava-slate: #5B6478;       /* accent3 — secondary text */
+  --cassava-mist: #C9D2E3;        /* accent4 — borders */
+  --cassava-cloud: #EEF2F9;       /* lt2 — app background */
+  --cassava-white: #FFFFFF;
+  /* Operational states (not in the theme; chosen to sit with it, AA on white) */
+  --state-warn: #B26B00;  --state-warn-wash: #FFF4E0;
+  --state-crit: #C62F3A;  --state-crit-wash: #FDECEE;
+
+  --font-display: "Montserrat", Arial, "Helvetica Neue", Helvetica, sans-serif;  /* majorFont */
+  --font-body: Arial, "Helvetica Neue", Helvetica, sans-serif;                    /* minorFont */
+}
