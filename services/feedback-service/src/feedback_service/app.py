@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import statistics
 from collections import defaultdict
 from collections.abc import Callable
@@ -62,6 +63,13 @@ class Prediction(Base):
     status: Mapped[str] = mapped_column(String(16))
     predicted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     eta_minutes: Mapped[float | None] = mapped_column(Float, nullable=True)
+    service: Mapped[str] = mapped_column(String(128), default="unknown")
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    root_cause: Mapped[str] = mapped_column(Text, default="")
+    runbook_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    recommended_actions: Mapped[str] = mapped_column(Text, default="[]")  # JSON list
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Label(Base):
@@ -94,6 +102,32 @@ class ChatRating(BaseModel):
     incident_key: str
     useful: bool
     rating: int | None = None
+
+
+def _utc(dt: datetime | None) -> datetime | None:
+    """SQLite drops tzinfo; every timestamp leaving the API is explicit UTC."""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
+
+
+class IncidentView(BaseModel):
+    incident_key: str
+    tenant_id: str
+    ci_id: str
+    service: str
+    failure_type: str
+    status: str
+    predicted_at: datetime
+    updated_at: datetime | None
+    resolved_at: datetime | None
+    eta_minutes: float | None
+    confidence: float
+    root_cause: str
+    runbook_ref: str | None
+    recommended_actions: list[str]
+    outcome: str | None
+    lead_time_minutes: float | None
 
 
 class KPI(BaseModel):
@@ -152,22 +186,79 @@ class FeedbackService:
             await c.run_sync(Base.metadata.create_all)
 
     async def on_event(self, ev: CloudEvent) -> None:
+        """Keep one row per incident: created by the first verdict, refreshed by ETA
+        upgrades, closed by the resolved verdict. Noise is not a prediction."""
         v = ev.payload(Verdict)
-        if v.status in (VerdictStatus.RESOLVED, VerdictStatus.NOISE) or v.candidate.is_update:
+        if v.status is VerdictStatus.NOISE:
             return
         async with self.sessions.begin() as s:
-            if await s.get(Prediction, v.incident_key) is None:
-                s.add(
-                    Prediction(
-                        incident_key=v.incident_key,
-                        tenant_id=v.tenant_id,
-                        ci_id=v.ci_id,
-                        failure_type=v.predicted_failure.split(" ")[0],
-                        status=v.status.value,
-                        predicted_at=v.candidate.first_seen,
-                        eta_minutes=v.eta_minutes,
+            row = await s.get(Prediction, v.incident_key)
+            if v.status is VerdictStatus.RESOLVED:
+                if row is not None:
+                    row.resolved_at = self.clock()
+                return
+            if row is None:
+                row = Prediction(
+                    incident_key=v.incident_key,
+                    tenant_id=v.tenant_id,
+                    ci_id=v.ci_id,
+                    predicted_at=v.candidate.first_seen,
+                )
+                s.add(row)
+            row.failure_type = v.predicted_failure.split(" ")[0]
+            row.service = v.candidate.service
+            row.status = v.status.value
+            row.eta_minutes = v.eta_minutes
+            row.confidence = v.confidence
+            row.root_cause = v.root_cause
+            row.runbook_ref = v.runbook_ref
+            row.recommended_actions = json.dumps(v.recommended_actions)
+            row.updated_at = self.clock()
+
+    async def incidents(self, tenant: str, limit: int = 100) -> list[IncidentView]:
+        async with self.sessions() as s:
+            preds = (
+                (
+                    await s.execute(
+                        select(Prediction)
+                        .where(Prediction.tenant_id == tenant)
+                        .order_by(Prediction.predicted_at.desc())
+                        .limit(min(limit, 500))
                     )
                 )
+                .scalars()
+                .all()
+            )
+            keys = [p.incident_key for p in preds]
+            labels = {
+                lb.incident_key: lb
+                for lb in (await s.execute(select(Label).where(Label.incident_key.in_(keys))))
+                .scalars()
+                .all()
+            }
+        return [
+            IncidentView(
+                incident_key=p.incident_key,
+                tenant_id=p.tenant_id,
+                ci_id=p.ci_id,
+                service=p.service,
+                failure_type=p.failure_type,
+                status=p.status,
+                predicted_at=_utc(p.predicted_at) or p.predicted_at,
+                updated_at=_utc(p.updated_at),
+                resolved_at=_utc(p.resolved_at),
+                eta_minutes=p.eta_minutes,
+                confidence=p.confidence,
+                root_cause=p.root_cause,
+                runbook_ref=p.runbook_ref,
+                recommended_actions=json.loads(p.recommended_actions or "[]"),
+                outcome=labels[p.incident_key].outcome if p.incident_key in labels else None,
+                lead_time_minutes=(
+                    labels[p.incident_key].lead_time_minutes if p.incident_key in labels else None
+                ),
+            )
+            for p in preds
+        ]
 
     async def record(self, fo: FeedbackOutcome) -> None:
         async with self.sessions.begin() as s:
@@ -288,6 +379,10 @@ def create_app(svc: FeedbackService, ready: Callable[[], bool] = lambda: True) -
     @app.get("/v1/kpis", response_model=list[KPI])
     async def get_kpis(tenant_id: str | None = None) -> list[KPI]:
         return await svc.kpis(tenant_id)
+
+    @app.get("/v1/incidents", response_model=list[IncidentView])
+    async def list_incidents(tenant_id: str, limit: int = 100) -> list[IncidentView]:
+        return await svc.incidents(tenant_id, limit)
 
     @app.get("/v1/predictions/{incident_key}")
     async def get_prediction(incident_key: str) -> dict[str, Any]:
