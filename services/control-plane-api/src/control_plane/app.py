@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Literal
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
@@ -99,12 +102,27 @@ class AuditOut(BaseModel):
     detail: dict[str, Any]
 
 
+class OutcomeIn(BaseModel):
+    outcome: Literal["true_positive", "false_positive"]
+    actual_root_cause: str | None = Field(None, max_length=2000)
+
+
+class MeOut(BaseModel):
+    sub: str
+    roles: list[str]
+    tenants: list[str]
+
+
 def create_app(
     engine: AsyncEngine,
     auth: Authenticator,
     executor: Executor,
     playbooks: set[str],
     ready: Callable[[], bool] = lambda: True,
+    feedback: httpx.AsyncClient | None = None,
+    console_dir: Path | None = None,
+    console_config: dict[str, Any] | None = None,
+    brand_dir: Path | None = None,
 ) -> FastAPI:
     app = FastAPI(
         title="AIOps control-plane API",
@@ -445,5 +463,87 @@ def create_app(
                 AuditOut(ts=r.ts, actor=r.actor, action=r.action, target=r.target, detail=r.detail)
                 for r in rows
             ]
+
+    # ------------------------------------------------------------------ console support
+    @app.get("/v1/me", response_model=MeOut, tags=["console"])
+    async def me(p: Principal = Depends(current)) -> MeOut:
+        return MeOut(sub=p.sub, roles=sorted(p.roles), tenants=sorted(p.tenants))
+
+    @app.get("/v1/tenants/{tenant_id}/playbooks", response_model=list[str], tags=["remediation"])
+    async def list_playbooks(tenant_id: str, p: Principal = Depends(viewer)) -> list[str]:
+        return sorted(playbooks)
+
+    @app.get(
+        "/v1/tenants/{tenant_id}/remediations",
+        response_model=list[RemediationOut],
+        tags=["remediation"],
+    )
+    async def list_remediations(
+        tenant_id: str, p: Principal = Depends(viewer)
+    ) -> list[RemediationOut]:
+        async with db.tenant_session(sessions, tenant_id) as s:
+            rows = (
+                (
+                    await s.execute(
+                        select(db.Remediation)
+                        .where(db.Remediation.tenant_id == tenant_id)
+                        .order_by(db.Remediation.id.desc())
+                        .limit(200)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [_out(r, await _mode(s, tenant_id, r.failure_type)) for r in rows]
+
+    async def _feedback(method: str, path: str, **kw: Any) -> Any:
+        if feedback is None:
+            raise HTTPException(503, "feedback service not configured")
+        try:
+            r = await feedback.request(method, path, **kw)
+        except httpx.HTTPError as e:
+            raise HTTPException(502, f"feedback service unreachable: {type(e).__name__}") from e
+        if r.status_code >= 400:
+            raise HTTPException(502, f"feedback service returned {r.status_code}")
+        return r.json()
+
+    @app.get("/v1/tenants/{tenant_id}/incidents", tags=["console"])
+    async def list_incidents(tenant_id: str, p: Principal = Depends(viewer)) -> Any:
+        return await _feedback(
+            "GET", "/v1/incidents", params={"tenant_id": tenant_id, "limit": 200}
+        )
+
+    @app.get("/v1/tenants/{tenant_id}/kpis", tags=["console"])
+    async def tenant_kpis(tenant_id: str, p: Principal = Depends(viewer)) -> Any:
+        return await _feedback("GET", "/v1/kpis", params={"tenant_id": tenant_id})
+
+    @app.post("/v1/tenants/{tenant_id}/incidents/{incident_key}/outcome", tags=["console"])
+    async def label_incident(
+        tenant_id: str, incident_key: str, body: OutcomeIn, p: Principal = Depends(operator)
+    ) -> Any:
+        pred = await _feedback("GET", f"/v1/predictions/{incident_key}")
+        doc = {
+            "incident_key": incident_key,
+            "tenant_id": tenant_id,
+            "failure_type": pred["failure_type"],
+            "outcome": body.outcome,
+            "actual_root_cause": body.actual_root_cause,
+            "source": "api",
+        }
+        out = await _feedback("POST", "/v1/outcomes", json=doc)
+        async with db.tenant_session(sessions, tenant_id) as s:
+            await audit(s, p, tenant_id, "incident.label", incident_key, {"outcome": body.outcome})
+        return out
+
+    if console_dir is not None and console_dir.is_dir():
+        cfg = console_config or {}
+
+        @app.get("/console/config.json", include_in_schema=False)
+        async def console_cfg() -> dict[str, Any]:
+            return cfg
+
+        if brand_dir is not None and brand_dir.is_dir():  # must precede the /console mount
+            app.mount("/console/brand", StaticFiles(directory=brand_dir), name="brand")
+        app.mount("/console", StaticFiles(directory=console_dir, html=True), name="console")
 
     return app

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AIOps Console · Cassava</title>
+  <meta name="description" content="Predicted incidents, AI root cause, fix approvals and prediction quality.">
+  <link rel="icon" type="image/png" href="brand/logo/favicon-64.png">
+  <link rel="stylesheet" href="brand/tokens.css">
+  <link rel="stylesheet" href="app.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="bar">
+    <a class="brand" href="#/incidents" aria-label="Cassava AIOps console, incidents">
+      <img src="brand/logo/cassava-logo-white.png" alt="Cassava Technologies" width="116" height="32">
+      <span class="product">AIOps</span>
+    </a>
+    <nav class="tabs" aria-label="Sections" hidden>
+      <a href="#/incidents" data-route="incidents">Incidents</a>
+      <a href="#/approvals" data-route="approvals">Fix approvals <span class="count" id="approvals-count" hidden></span></a>
+      <a href="#/quality" data-route="quality">Prediction quality</a>
+      <a href="#/audit" data-route="audit">Audit log</a>
+    </nav>
+    <div class="who" hidden>
+      <label class="tenant">
+        <span class="visually-hidden">Tenant</span>
+        <select id="tenant"></select>
+      </label>
+      <span class="user" id="user"></span>
+      <button class="ghost" id="signout" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1"></main>
+
+  <aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="drawer-title" role="dialog">
+    <div class="drawer-body" id="drawer-body"></div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <dialog id="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-text"></p>
+      <div class="row-end">
+        <button value="cancel" class="secondary">Cancel</button>
+        <button value="ok" class="primary" id="confirm-ok"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

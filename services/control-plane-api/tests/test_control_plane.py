@@ -36,6 +36,7 @@ async def client():  # type: ignore[no-untyped-def]
             await c.post("/v1/tenants", json={"id": "bank", "name": "Bank"}, headers=ADMIN)
         ).status_code == 201
         yield c, ex
+    await engine.dispose()
 
 
 async def test_auth_and_tenant_isolation(client) -> None:  # type: ignore[no-untyped-def]
@@ -169,3 +170,111 @@ def test_role_claim_paths() -> None:
     )
     p = a.decode(t)
     assert p.has("operator") and not p.has("admin") and p.can_access("bank")
+
+
+async def test_console_endpoints_proxy_feedback_with_rbac(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from datetime import UTC, datetime
+
+    from aiops_common.cloudevents import make_event
+    from aiops_common.contracts.models import (
+        CandidateIncident,
+        DetectorKind,
+        Signal,
+        Verdict,
+        VerdictStatus,
+    )
+    from feedback_service.app import FeedbackService
+    from feedback_service.app import create_app as fb_app
+
+    t0 = datetime(2026, 11, 11, 8, 0, tzinfo=UTC)
+    fe = create_async_engine("sqlite+aiosqlite:///:memory:")
+    fb = FeedbackService(fe, None, {})
+    await fb.create_schema()
+    sig = Signal(
+        signal_id="s",
+        tenant_id="bank",
+        ci_id="CI-1",
+        service="db",
+        detector=DetectorKind.TREND,
+        failure_type="disk_full",
+        metric="m",
+        value=1,
+        score=0.9,
+        ts=t0,
+    )
+    cand = CandidateIncident(
+        incident_key="inc-0123456789abcdef0123",
+        tenant_id="bank",
+        ci_id="CI-1",
+        service="db",
+        signals=[sig],
+        predicted_failure="disk_full",
+        eta_minutes=12,
+        confidence=0.9,
+        first_seen=t0,
+        last_seen=t0,
+    )
+    v = Verdict(
+        incident_key=cand.incident_key,
+        tenant_id="bank",
+        ci_id="CI-1",
+        status=VerdictStatus.VERIFIED,
+        is_incident=True,
+        confidence=0.9,
+        predicted_failure="disk_full",
+        eta_minutes=12,
+        root_cause="WAL archive failing",
+        recommended_actions=["fix archiver"],
+        runbook_ref="RB-DISK-001",
+        model_id="m",
+        prompt_version="v",
+        candidate=cand,
+    )
+    await fb.on_event(make_event(v, source="urn:t"))
+    fbc = httpx.AsyncClient(transport=httpx.ASGITransport(app=fb_app(fb)), base_url="http://fb")
+    (tmp_path / "console").mkdir()
+    (tmp_path / "console" / "index.html").write_text("<h1>console</h1>")
+    (tmp_path / "brand").mkdir()
+    (tmp_path / "brand" / "tokens.css").write_text(":root{}")
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as c:
+        await c.run_sync(Base.metadata.create_all)
+    auth = Authenticator(AuthSettings(mode="dev", dev_secret=SECRET), "dev")  # type: ignore[arg-type]
+    app = create_app(
+        engine,
+        auth,
+        DryRunExecutor(),
+        {"clean_tmp.yml"},
+        feedback=fbc,
+        console_dir=tmp_path / "console",
+        console_config={"oidc": None},
+        brand_dir=tmp_path / "brand",
+    )
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://x") as c:
+        await c.post("/v1/tenants", json={"id": "bank", "name": "Bank"}, headers=ADMIN)
+        me = (await c.get("/v1/me", headers=OPER)).json()
+        assert me == {"sub": "alice", "roles": ["operator"], "tenants": ["bank"]}
+        assert (await c.get("/v1/tenants/bank/incidents", headers=OTHER)).status_code == 403
+        inc = (await c.get("/v1/tenants/bank/incidents", headers=OPER)).json()
+        assert inc[0]["root_cause"] == "WAL archive failing"
+        assert inc[0]["predicted_at"].endswith(("Z", "+00:00"))
+        viewer = tok("vic", ["viewer"], ["bank"])
+        body = {"outcome": "true_positive"}
+        url = f"/v1/tenants/bank/incidents/{cand.incident_key}/outcome"
+        assert (await c.post(url, json=body, headers=viewer)).status_code == 403
+        assert (await c.post(url, json=body, headers=OPER)).status_code == 200
+        kpis = (await c.get("/v1/tenants/bank/kpis", headers=OPER)).json()
+        assert kpis[0]["true_positives"] == 1
+        assert (await c.get("/v1/tenants/bank/playbooks", headers=OPER)).json() == ["clean_tmp.yml"]
+        assert (await c.get("/v1/tenants/bank/remediations", headers=OPER)).json() == []
+        assert "console" in (await c.get("/console/")).text
+        assert (await c.get("/console/config.json")).json() == {"oidc": None}
+        assert (await c.get("/console/brand/tokens.css")).status_code == 200
+        audit = [a["action"] for a in (await c.get("/v1/tenants/bank/audit", headers=OPER)).json()]
+        assert "incident.label" in audit
+    down = create_app(engine, auth, DryRunExecutor(), set(), feedback=None)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=down), base_url="http://x") as c:
+        assert (await c.get("/v1/tenants/bank/incidents", headers=OPER)).status_code == 503
+    await fbc.aclose()
+    await engine.dispose()
+    await fe.dispose()

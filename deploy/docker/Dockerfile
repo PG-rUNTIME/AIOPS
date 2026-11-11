@@ -47,6 +47,8 @@ RUN groupadd --gid 10001 app \
 
 COPY --from=build /opt/venv /opt/venv
 COPY --chown=0:0 config/ /app/config/
+COPY --chown=0:0 ui/console/ /app/console/
+COPY --chown=0:0 brand/ /app/brand/
 
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \

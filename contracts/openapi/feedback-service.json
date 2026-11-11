@@ -109,6 +109,142 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IncidentView": {
+        "properties": {
+          "ci_id": {
+            "title": "Ci Id",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "eta_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Minutes"
+          },
+          "failure_type": {
+            "title": "Failure Type",
+            "type": "string"
+          },
+          "incident_key": {
+            "title": "Incident Key",
+            "type": "string"
+          },
+          "lead_time_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Time Minutes"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "predicted_at": {
+            "format": "date-time",
+            "title": "Predicted At",
+            "type": "string"
+          },
+          "recommended_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recommended Actions",
+            "type": "array"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "root_cause": {
+            "title": "Root Cause",
+            "type": "string"
+          },
+          "runbook_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runbook Ref"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "incident_key",
+          "tenant_id",
+          "ci_id",
+          "service",
+          "failure_type",
+          "status",
+          "predicted_at",
+          "updated_at",
+          "resolved_at",
+          "eta_minutes",
+          "confidence",
+          "root_cause",
+          "runbook_ref",
+          "recommended_actions",
+          "outcome",
+          "lead_time_minutes"
+        ],
+        "title": "IncidentView",
+        "type": "object"
+      },
       "KPI": {
         "properties": {
           "failure_type": {
@@ -235,6 +371,59 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/incidents": {
+      "get": {
+        "operationId": "list_incidents_v1_incidents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/IncidentView"
+                  },
+                  "title": "Response List Incidents V1 Incidents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Incidents"
+      }
+    },
     "/v1/kpis": {
       "get": {
         "operationId": "get_kpis_v1_kpis_get",

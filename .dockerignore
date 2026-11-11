@@ -6,6 +6,8 @@
 !libs/**
 !services/**
 !config/**
+!ui/**
+!brand/**
 **/__pycache__
 **/*.pyc
 **/tests/**

@@ -100,6 +100,35 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "MeOut": {
+        "properties": {
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "sub": {
+            "title": "Sub",
+            "type": "string"
+          },
+          "tenants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tenants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sub",
+          "roles",
+          "tenants"
+        ],
+        "title": "MeOut",
+        "type": "object"
+      },
       "ModelConfigIn": {
         "properties": {
           "base_url": {
@@ -144,6 +173,35 @@
           "base_url"
         ],
         "title": "ModelConfigIn",
+        "type": "object"
+      },
+      "OutcomeIn": {
+        "properties": {
+          "actual_root_cause": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Root Cause"
+          },
+          "outcome": {
+            "enum": [
+              "true_positive",
+              "false_positive"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "title": "OutcomeIn",
         "type": "object"
       },
       "PolicyIn": {
@@ -487,6 +545,32 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/me": {
+      "get": {
+        "operationId": "me_v1_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Me",
+        "tags": [
+          "console"
+        ]
+      }
+    },
     "/v1/tenants": {
       "get": {
         "operationId": "list_tenants_v1_tenants_get",
@@ -739,6 +823,166 @@
         ]
       }
     },
+    "/v1/tenants/{tenant_id}/incidents": {
+      "get": {
+        "operationId": "list_incidents_v1_tenants__tenant_id__incidents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response List Incidents V1 Tenants  Tenant Id  Incidents Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Incidents",
+        "tags": [
+          "console"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/incidents/{incident_key}/outcome": {
+      "post": {
+        "operationId": "label_incident_v1_tenants__tenant_id__incidents__incident_key__outcome_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "incident_key",
+            "required": true,
+            "schema": {
+              "title": "Incident Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutcomeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Label Incident V1 Tenants  Tenant Id  Incidents  Incident Key  Outcome Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Label Incident",
+        "tags": [
+          "console"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/kpis": {
+      "get": {
+        "operationId": "tenant_kpis_v1_tenants__tenant_id__kpis_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Tenant Kpis V1 Tenants  Tenant Id  Kpis Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Tenant Kpis",
+        "tags": [
+          "console"
+        ]
+      }
+    },
     "/v1/tenants/{tenant_id}/model-config": {
       "put": {
         "operationId": "put_model_v1_tenants__tenant_id__model_config_put",
@@ -793,6 +1037,57 @@
         "summary": "Put Model",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/playbooks": {
+      "get": {
+        "operationId": "list_playbooks_v1_tenants__tenant_id__playbooks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Playbooks V1 Tenants  Tenant Id  Playbooks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Playbooks",
+        "tags": [
+          "remediation"
         ]
       }
     },
@@ -863,6 +1158,55 @@
       }
     },
     "/v1/tenants/{tenant_id}/remediations": {
+      "get": {
+        "operationId": "list_remediations_v1_tenants__tenant_id__remediations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RemediationOut"
+                  },
+                  "title": "Response List Remediations V1 Tenants  Tenant Id  Remediations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Remediations",
+        "tags": [
+          "remediation"
+        ]
+      },
       "post": {
         "operationId": "propose_v1_tenants__tenant_id__remediations_post",
         "parameters": [

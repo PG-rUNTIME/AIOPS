@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
+import httpx
 import uvicorn
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -27,6 +29,12 @@ class Settings(ServiceSettings):
     playbooks_dir: str = "/app/config/remediation/playbooks"
     executor: str = "dry_run"  # dry_run | ansible
     create_schema: bool = True  # dev; prod runs `alembic upgrade head`
+    feedback_url: str | None = "http://feedback-service:8080"
+    console_dir: str = "/app/console"
+    brand_dir: str = "/app/brand"
+    # OIDC for the console (authorization code + PKCE); empty = paste a token (dev)
+    console_oidc_issuer: str | None = None
+    console_oidc_client_id: str | None = None
     ansible_private_data_dir: str = "/runner"
 
 
@@ -47,8 +55,20 @@ def main() -> None:
         if s.executor == "dry_run"
         else AnsibleRunnerExecutor(s.ansible_private_data_dir)
     )
+    oidc = (
+        {"issuer": s.console_oidc_issuer, "client_id": s.console_oidc_client_id}
+        if s.console_oidc_issuer and s.console_oidc_client_id
+        else None
+    )
     app = create_app(
-        engine, Authenticator(s.auth, s.environment), ex, allowed_playbooks(s.playbooks_dir)
+        engine,
+        Authenticator(s.auth, s.environment),
+        ex,
+        allowed_playbooks(s.playbooks_dir),
+        feedback=httpx.AsyncClient(base_url=s.feedback_url, timeout=10) if s.feedback_url else None,
+        console_dir=Path(s.console_dir),
+        brand_dir=Path(s.brand_dir),
+        console_config={"environment": s.environment, "oidc": oidc},
     )
     uvicorn.run(app, host=s.http_host, port=s.http_port, log_config=None)
 
