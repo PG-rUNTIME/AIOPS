@@ -1,0 +1,34 @@
+# Keep workflow used when the router runs with AIOPS_MIRROR_TO_KEEP=true and you want
+# Keep (not the router) to own ITSM delivery. Provider/field names follow Keep's
+# workflow docs; VERIFY against the Keep version you deploy (see ADR-0008).
+workflow:
+  id: aiops-predicted-failure
+  name: AIOps predicted failure → ServiceNow + chat
+  description: Opens a ServiceNow incident and pages on-call for imminent, verified predictions.
+  triggers:
+    - type: alert
+      filters:
+        - key: source
+          value: aiops
+        - key: status
+          value: firing
+  actions:
+    - name: servicenow-incident
+      if: "'{{ alert.severity }}' in ['critical', 'high']"
+      provider:
+        type: servicenow
+        config: "{{ providers.servicenow-demo }}"
+        with:
+          table_name: INCIDENT
+          payload:
+            short_description: "{{ alert.name }}"
+            description: "{{ alert.description }}"
+            cmdb_ci: "{{ alert.labels.ci_id }}"
+            correlation_id: "{{ alert.fingerprint }}"
+    - name: page-on-call
+      if: "'{{ alert.severity }}' == 'critical'"
+      provider:
+        type: slack
+        config: "{{ providers.slack-oncall }}"
+        with:
+          message: "P1 {{ alert.name }} — {{ alert.message }}"

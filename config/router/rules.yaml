@@ -1,0 +1,3 @@
+# Per-tenant routing overrides ("*" applies to all tenants). Empty = built-in defaults
+# (aiops_common/routing.py, matching the architecture document's routing table).
+{}
